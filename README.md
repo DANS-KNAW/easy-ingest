@@ -27,11 +27,26 @@ A Staged Digital Object is a directory in the filesystem of the client that cont
 up the digital object in Fedora. It must contain at least a [FOXML] file, called ``fo.xml``. All other files in the directory
 are assumed to be the contents of datastreams. The names of the files are used as datastream IDs.
 
+Example:
+
+     - staged-fo
+         |
+         +- fo.xml
+         |
+         +- DC
+         |
+         +- IMAGE_DATA
+
 
 ARGUMENTS
 ---------
--u, --user
-    : Fedora user to connect with
+-u, --user: Fedora user to connect with
+
+-p, --password: password of the Fedora user
+
+-f, --fcrepo-server: URL of the Fedora Commons Repository server
+
+
     
 
 
