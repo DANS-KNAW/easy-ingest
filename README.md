@@ -59,6 +59,25 @@ INSTALLATION AND CONFIGURATION
 BUILDING FROM SOURCE
 --------------------
 
+Prerequisites:
+
+* Java 7 or higher
+* Maven 3.3.3 or higher
+ 
+Steps:
+
+1. Clone and build the [dans-parent] project
+      
+        git clone https://github.com/DANS-KNAW/dans-parent.git
+        cd dans-parent
+        mvn install
+2. Clone and build this project
+
+        git clone https://github.com/DANS-KNAW/easy-ingest.git
+        cd easy-ingest
+        mvn install
+
+  
 
 
 
@@ -68,3 +87,4 @@ BUILDING FROM SOURCE
 [Service APIs]: https://wiki.duraspace.org/display/FEDORA38/Service+APIs
 [client command-line utilities]: https://wiki.duraspace.org/display/FEDORA38/Client+Command-line+Utilities
 [FOXML]: https://wiki.duraspace.org/pages/viewpage.action?pageId=66585857
+[dans-parent]: https://github.com/DANS-KNAW/dans-parent
