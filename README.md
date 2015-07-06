@@ -42,6 +42,7 @@ Example:
 
 ARGUMENTS
 ---------
+
 -u, --user: Fedora user to connect with
 
 -p, --password: password of the Fedora user
@@ -49,12 +50,21 @@ ARGUMENTS
 -f, --fcrepo-server: URL of the Fedora Commons Repository server
 
 
-    
-
-
-
 INSTALLATION AND CONFIGURATION
 ------------------------------
+
+### Installation steps:
+
+1. Unzip the tarball to a directory of your choice, e.g. /opt/
+2. A new directory called easy-ingest-<version> will be created
+3. Create an environment variabele ``EASY_INGEST_HOME`` with the directory from step 2 as its value
+4. Add ``EASY_INGEST_HOME/bin`` to your ``PATH`` environment variable.
+
+
+### Configuration
+
+
+
 
 
 
@@ -68,7 +78,7 @@ Prerequisites:
  
 Steps:
 
-1. Clone and build the [dans-parent] project
+1. Clone and build the [dans-parent] project (*can be skipped if you have access to the DANS maven repository*)
       
         git clone https://github.com/DANS-KNAW/dans-parent.git
         cd dans-parent
@@ -78,11 +88,6 @@ Steps:
         git clone https://github.com/DANS-KNAW/easy-ingest.git
         cd easy-ingest
         mvn install
-
-  
-
-
-
 
 
 [Fedora Digital Object Model]: https://wiki.duraspace.org/display/FEDORA38/Fedora+Digital+Object+Model
