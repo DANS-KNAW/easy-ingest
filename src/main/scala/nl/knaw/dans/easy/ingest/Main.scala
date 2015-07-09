@@ -19,7 +19,9 @@ object Main {
   type Pid = String
   type Predicate = String
   type PidDictionary = Map[ObjName, Pid]
-  type Relations = List[(Predicate, Pid)]
+
+  case class Relation(predicate: Predicate, objName: ObjName)
+  type Relations = Seq[Relation]
 
   def main(args: Array[String]) {
     val credentials = new FedoraCredentials("http://deasy:8080/fedora", "fedoraAdmin", "fedoraAdmin")
@@ -34,7 +36,7 @@ object Main {
     /*
       Digital object ingest phase (only foxml)
      */
-    println(">>>>>> PHASE 1: INGEST DIGITAL OBJECTS")
+    println(">>> PHASE 1: INGEST DIGITAL OBJECTS")
 
     val doIngestResults = doDirs.map(ingestDigitalObject)
     verifyIntegrity(doIngestResults)
@@ -45,7 +47,7 @@ object Main {
     /*
       Add datastreams phase
      */
-    println(">>>>>> PHASE 2: ADD DATASTREAMS")
+    println(">>> PHASE 2: ADD DATASTREAMS")
 
     val addDatastreamsResults = for {
       doDir <- doDirs
@@ -60,21 +62,16 @@ object Main {
     /*
       Add relations phase
      */
-    println(">>>>>> PHASE 3: ADD RELATIONS")
+    println(">>> PHASE 3: ADD RELATIONS")
 
-//    val result = for {
-//      pid1 <- ingestDO()
-//      pid2 <- ingestDO()
-//      uri1 <- addDataStream(pid1, "id1", "text/plain")
-//      uri2 <- addDataStream(pid2, "id2", "text/plain")
-//      _ <- addRelation(pid1, "fedora:isMemberOf", pid2)      // object should be parent digital object
-//      _ <- addRelation(pid1, "fedora:isSubordinateTo", pid2) // object should be dataset
-//    } yield (pid1, pid2, uri1, uri2)
-//
-//    result match {
-//      case Success(x) => println(x)
-//      case Failure(e) => e.printStackTrace()
-//    }
+    val addRelationsResults = doDirs.flatMap(doDir => {
+      val relations = readRelations(doDir).getOrElse { throw new RuntimeException(s"Couldn't parse relations for: ${doDir.getName}") }
+      relations.map(r => addRelation(pidDictionary(doDir.getName), r.predicate, pidDictionary(r.objName)))
+    })
+
+    verifyIntegrity(addRelationsResults)
+
+    addRelationsResults.foreach(println)
   }
 
   private def ingestDigitalObject(doDir: File): Try[(ObjName, Pid)] =
@@ -98,8 +95,9 @@ object Main {
       .getLocation
   }
 
-  private def addRelation(subject: Pid, predicate: String, `object`: Pid): Try[String] = Try {
-    addRelationship(subject).predicate(predicate).`object`(`object`).execute().getEntity(classOf[String])
+  private def addRelation(subject: Pid, predicate: String, `object`: Pid): Try[(Pid, String, Pid)] = Try {
+    addRelationship(subject).predicate(predicate).`object`(`object`).execute().close()
+    (subject, predicate, `object`)
   }
 
   private def readNamespace(doDir: File): Try[String] = Try {
@@ -107,6 +105,20 @@ object Main {
     val src = io.Source.fromFile(cfgFile)
     try {
       src.getLines().next()
+    } finally {
+      src.close()
+    }
+  }
+
+  private def readRelations(doDir: File): Try[Relations] = Try {
+    val cfgFile = Paths.get(doDir.getPath, CONFIG_FILENAME).toFile
+    val src = io.Source.fromFile(cfgFile)
+    try {
+      src.getLines().toList
+        .drop(1)
+        .map(line => line.split(' '))
+        .filter(_.length == 2)
+        .map(x => Relation(predicate = x(0), objName = x(1)))
     } finally {
       src.close()
     }
