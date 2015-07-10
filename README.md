@@ -49,14 +49,14 @@ Example:
          +- my.xml
 
 In this example the SDO is called``my-staged-do``. The mandatory files ``fo.xml`` and ``cfg.json`` are present, as are three
-files with datastream data: ``DC``, ``IMAGE_DATA`` and ``my.xml``.
-
+files with datastream data: ``DC``, ``IMAGE_DATA`` and ``my.xml``. Unless specified otherwise in the [Digital Object 
+Configuration] the three datastreams will have these file names as IDs.
 
 
 ### Staged Digital Object Set
 
 A Staged Digital Object Set (SDO-set) is a directory containing as its direct subdirectories SDOs. The SDOs in an SDO-set
-my reference each other by directory name in the relations they define. See ... for details.
+may reference each other by directory name in the relations they define. See ... for details.
 
 
 ### Digital Object Configuration File
