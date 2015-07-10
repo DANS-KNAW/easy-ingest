@@ -36,7 +36,7 @@ IDs by default.
 
 Example:
 
-     - sdo
+     - my-staged-do
          |
          +- fo.xml
          |
@@ -48,8 +48,21 @@ Example:
          |
          +- my.xml
 
-### Digital Object Configuration file
+In this example the SDO is called``my-staged-do``. The mandatory files ``fo.xml`` and ``cfg.json`` are present, as are three
+files with datastream data: ``DC``, ``IMAGE_DATA`` and ``my.xml``.
 
+
+
+### Staged Digital Object Set
+
+A Staged Digital Object Set (SDO-set) is a directory containing as its direct subdirectories SDOs. The SDOs in an SDO-set
+my reference each other by directory name in the relations they define. See ... for details.
+
+
+### Digital Object Configuration File
+
+The Digital Object Configuration file is a [json] file containing additional information that is used to configure the
+digital object and its datastreams.
 
 
 
@@ -110,3 +123,4 @@ Steps:
 [FOXML]: https://wiki.duraspace.org/pages/viewpage.action?pageId=66585857
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
 [Digital Object Configuration]: #digital-object-configuration-file
+[json]: http://json.org/
