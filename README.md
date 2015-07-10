@@ -66,29 +66,40 @@ digital object and its datastreams. Its structure is informally specified using 
 introduced with ``--`` are not part of the example and are not legal json
 
       {
-        "namespace" : "easy-dataset",                 -- the Fedora PID namespace to create the new digital object in
+        "namespace" : "easy-dataset",                 -- the Fedora PID namespace in which to create
+                                                      -- the new digital object
         "datastreams" : [
           {
-            "id" : "DATASET_LICENSE",                 --
-            "file" : "licence.pdf",
-            "mime" : "application/pdf",
-            "control_group": "M"
+            "file" : "licence.pdf",                   -- file in the SDO to use for the datastream
+                                                      -- illegal in combination with "url"
+            "id" : "DATASET_LICENSE",                 -- datastream ID, by default the value of "file"
+            "mime" : "application/pdf",               -- MIME-type of the contents, mandatory
+            "control_group": "M"                      -- Fedora control group to use, one of M, X
+                                                      -- if "file" is specified, default M
           },
           {
-            "id" : "REMOTE_BYTES",                 --
-            "url" : "http://archive.org/remote/file/path.jpg"
-            "mime" : "image/jpeg",
-            "control_group": "R"
+            "url" : "http://archive.org/remote/file/path.jpg" -- remote URL to use, illegal in combination
+                                                      -- with "file"
+            "id" : "REMOTE_BYTES",                    -- datasream ID, mandatory if "url" is used
+            "mime" : "image/jpeg",                    -- MIME-type of the contents, mandatoyr
+            "control_group": "R"                      -- Fedora control group to use, one of R, E
+                                                      -- if "url" is specified, default "R"
           },
+          { 
+            "file": "EASY_FILE",                      -- will create datastream "EASY_FILE" from 
+            "mime": "text/csv"                        -- the file "EASY_FILE" in the SDO, and use
+                                                      -- control group M.
+          }
         ],
-        "relations" : [
+        "rels-ext" : [
           {
-            "predicate": "fedora:isMemberOf",
-            "objectName" : "do1"
+            "predicate": "fedora:isMemberOf",         -- predicate to use
+            "object_sdo" : "do1"                      -- use the PID that was assigned to SDO "do1" in 
+                                                      -- the same SDO-set
           },
           {
-            "predicate": "fedora:isSubordinateTo",
-            "objectName" : "do1"
+            "predicate": "fedora:isSubordinateTo", 
+            "object_pid" : "easy-collection:123"      -- use a fixed PID
           }
         ]
       }    
