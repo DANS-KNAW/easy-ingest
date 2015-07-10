@@ -1,0 +1,19 @@
+{
+  "namespace" : "easy-dataset",
+  "files" : [
+    {
+      "filename" : "quicksort.hs",
+      "mime" : "text/plain"
+    }
+  ],
+  "relations" : [
+    {
+      "predicate": "fedora:isMemberOf",
+      "objectName" : "do1"
+    },
+    {
+      "predicate": "fedora:isSubordinateTo",
+      "objectName" : "do1"
+    }
+  ]
+}
