@@ -1,8 +1,8 @@
 {
   "namespace" : "easy-dataset",
-  "files" : [
+  "datastreams" : [
     {
-      "filename" : "quicksort.hs",
+      "name" : "quicksort.hs",
       "mime" : "text/plain"
     }
   ],

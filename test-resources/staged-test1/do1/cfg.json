@@ -1,16 +1,16 @@
 {
   "namespace" : "easy-dataset",
-  "files" : [
+  "datastreams" : [
     {
-      "filename" : "DATASET_LICENSE",
+      "name" : "DATASET_LICENSE",
       "mime" : "application/pdf"
     },
     {
-      "filename" : "AMD",
+      "name" : "AMD",
       "mime" : "application/xml"
     },
     {
-      "filename" : "quicksort.hs",
+      "name" : "quicksort.hs",
       "mime" : "text/plain"
     }
   ],

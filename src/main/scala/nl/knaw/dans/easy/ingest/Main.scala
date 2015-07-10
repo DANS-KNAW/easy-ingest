@@ -41,9 +41,9 @@ object Main {
   type PidDictionary = Map[ObjectName, Pid]
   type ConfigDictionary = Map[ObjectName, DOConfig]
 
-  case class FileSpec(filename: String, mime: String)
+  case class DatastreamSpec(name: String, mime: String)
   case class Relation(predicate: Predicate, objectName: ObjectName)
-  case class DOConfig(namespace: String, files: List[FileSpec], relations: List[Relation])
+  case class DOConfig(namespace: String, datastreams: List[DatastreamSpec], relations: List[Relation])
 
   def main(args: Array[String]) {
 
@@ -85,7 +85,7 @@ object Main {
       doDir <- doDirs
       file <- doDir.listFiles()
       if file.isFile && file.getName != CONFIG_FILENAME && file.getName != FOXML_FILENAME
-      mime = configDictionary(doDir.getName).files.find(_.filename == file.getName).map(_.mime).getOrElse("application/octet-stream")
+      mime = configDictionary(doDir.getName).datastreams.find(_.name == file.getName).map(_.mime).getOrElse("application/octet-stream")
     } yield addDataStream(file, pidDictionary(doDir.getName), file.getName, mime)
 
     verifyIntegrity(addDatastreamsResults)
