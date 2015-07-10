@@ -62,20 +62,36 @@ may reference each other by directory name in the relations they define. See ...
 ### Digital Object Configuration File
 
 The Digital Object Configuration file is a [json] file containing additional information that is used to configure the
-digital object and its datastreams. Its structure is 
+digital object and its datastreams. Its structure is informally specified using the example below. Note that the comments
+introduced with ``--`` are not part of the example and are not legal json
 
-      <digital-object-config> ::= 
-         {
-            "namespace": <fedora-pid-namespace> (,
-            "datastreams": <datastream-spec-list> (,
-            "relations": <relations-spec-list> ))
-         }
-            
-            
-            
-
-
-
+      {
+        "namespace" : "easy-dataset",                 -- the Fedora PID namespace to create the new digital object in
+        "datastreams" : [
+          {
+            "id" : "DATASET_LICENSE",                 --
+            "file" : "licence.pdf",
+            "mime" : "application/pdf",
+            "control_group": "M"
+          },
+          {
+            "id" : "REMOTE_BYTES",                 --
+            "url" : "http://archive.org/remote/file/path.jpg"
+            "mime" : "image/jpeg",
+            "control_group": "R"
+          },
+        ],
+        "relations" : [
+          {
+            "predicate": "fedora:isMemberOf",
+            "objectName" : "do1"
+          },
+          {
+            "predicate": "fedora:isSubordinateTo",
+            "objectName" : "do1"
+          }
+        ]
+      }    
 
 
 ARGUMENTS
