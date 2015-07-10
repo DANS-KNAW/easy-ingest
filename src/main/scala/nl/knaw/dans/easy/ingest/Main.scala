@@ -1,3 +1,19 @@
+/*******************************************************************************
+  * Copyright 2015 DANS - Data Archiving and Networked Services
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  *   http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  ******************************************************************************/
+
 package nl.knaw.dans.easy.ingest
 
 import java.io._
@@ -7,10 +23,12 @@ import java.nio.file.Paths
 import com.yourmediashelf.fedora.client.FedoraClient._
 import com.yourmediashelf.fedora.client.request.FedoraRequest
 import com.yourmediashelf.fedora.client.{FedoraClient, FedoraCredentials}
+import org.slf4j.LoggerFactory
 
 import scala.util.{Failure, Success, Try}
 
 object Main {
+  val log = LoggerFactory.getLogger(getClass)
 
   private val CONFIG_FILENAME = "do.cfg"
   private val FOXML_FILENAME = "fo.xml"
@@ -24,7 +42,7 @@ object Main {
   type Relations = Seq[Relation]
 
   def main(args: Array[String]) {
-    val credentials = new FedoraCredentials("http://deasy:8080/fedora", "fedoraAdmin", "fedoraAdmin")
+    val credentials = new FedoraCredentials(Properties("fedora-host"), Properties("fedora-user"), Properties("fedora-password"))
     val client = new FedoraClient(credentials)
     FedoraRequest.setDefaultClient(client)
 
@@ -34,20 +52,20 @@ object Main {
     val doDirs = stageDir.listFiles().filter(_.isDirectory)
 
     /*
-      Digital object ingest phase (only foxml)
+      Phase 1: Ingest digital objects (only foxml)
      */
-    println(">>> PHASE 1: INGEST DIGITAL OBJECTS")
+    log.info(">>> PHASE 1: INGEST DIGITAL OBJECTS")
 
     val doIngestResults = doDirs.map(ingestDigitalObject)
     verifyIntegrity(doIngestResults)
     val pidDictionary: PidDictionary = doIngestResults.map(_.get).toMap
 
-    pidDictionary.foreach(println)
+    pidDictionary.foreach(r => log.info(s"Created digital object: $r"))
 
     /*
-      Add datastreams phase
+      Phase 2: Add datastreams
      */
-    println(">>> PHASE 2: ADD DATASTREAMS")
+    log.info(">>> PHASE 2: ADD DATASTREAMS")
 
     val addDatastreamsResults = for {
       doDir <- doDirs
@@ -57,12 +75,12 @@ object Main {
 
     verifyIntegrity(addDatastreamsResults)
 
-    addDatastreamsResults.foreach(println)
+    addDatastreamsResults.map(_.get).foreach(r => log.info(s"Added datastream: $r"))
 
     /*
-      Add relations phase
+      Phase 3: Add relations
      */
-    println(">>> PHASE 3: ADD RELATIONS")
+    log.info(">>> PHASE 3: ADD RELATIONS")
 
     val addRelationsResults = doDirs.flatMap(doDir => {
       val relations = readRelations(doDir).getOrElse { throw new RuntimeException(s"Couldn't parse relations for: ${doDir.getName}") }
@@ -71,7 +89,7 @@ object Main {
 
     verifyIntegrity(addRelationsResults)
 
-    addRelationsResults.foreach(println)
+    addRelationsResults.map(_.get).foreach(r => log.info(s"Added relation: $r"))
   }
 
   private def ingestDigitalObject(doDir: File): Try[(ObjName, Pid)] =
@@ -132,7 +150,7 @@ object Main {
 
   private def verifyIntegrity[T](results: Seq[Try[T]]) {
     if (results.exists(_.isFailure)) {
-      results.collect { case Failure(e) => e }.foreach(_.printStackTrace()) // handle errors & rollback?
+      results.collect { case Failure(e) => e }.foreach(e => log.error(e.getMessage, e)) // handle errors & rollback?
       System.exit(13)
     }
   }
