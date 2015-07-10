@@ -74,8 +74,11 @@ introduced with ``--`` are not part of the example and are not legal json.
                                                       -- illegal in combination with "url"
             "id" : "DATASET_LICENSE",                 -- datastream ID, by default the value of "file"
             "mime" : "application/pdf",               -- MIME-type of the contents, mandatory
-            "control_group": "M"                      -- Fedora control group to use, one of M, X
+            "control_group": "M",                     -- Fedora control group to use, one of M, X
                                                       -- if "file" is specified, default M
+            "sha1-checksum": "910ad1aa48cccdce6cac012ab7107e0707b2edfb" -- the hex-encoded SHA-1 digest of
+                                                      -- "file", optional
+                                        
           },
           {
             "url" : "http://archive.org/remote/file/path.jpg" -- remote URL to use, illegal in combination
