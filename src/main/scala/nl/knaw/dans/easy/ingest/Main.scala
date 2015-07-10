@@ -46,67 +46,46 @@ object Main {
   case class DOConfig(namespace: String, datastreams: List[DatastreamSpec], relations: List[Relation])
 
   def main(args: Array[String]) {
-
-    val credentials = new FedoraCredentials(Properties("fedora-host"), Properties("fedora-user"), Properties("fedora-password"))
+    // TODO: use Scallop for solid command line parsing
+    if(args.length < 1) {
+      println("Not enough arguments")
+      System.exit(1)
+    }    
+    val stageDir = new File(args(0))
+    val credentials = new FedoraCredentials(Properties("default.fcrepo-server"), Properties("default.user"), Properties("default.password"))
     val client = new FedoraClient(credentials)
     FedoraRequest.setDefaultClient(client)
-
-    val stageDir = new File("test-resources/staged-test1")
-
-    // retrieve all digital object directories
     val doDirs = stageDir.listFiles().filter(_.isDirectory)
-
-    /*
-      Phase 0: Build config dictionary
-     */
+ 
     log.info(">>> PHASE 0: BUILD CONFIG DICTIONARY")
-
     val buildConfigDictionaryResults = doDirs.map(d => readDOConfig(d).map(cfg => (d.getName, cfg)))
     verifyIntegrity(buildConfigDictionaryResults)
     implicit val configDictionary: ConfigDictionary = buildConfigDictionaryResults.map(_.get).toMap
 
-    /*
-      Phase 1: Ingest digital objects (only foxml)
-     */
     log.info(">>> PHASE 1: INGEST DIGITAL OBJECTS")
-
     val doIngestResults = doDirs.map(ingestDigitalObject)
     verifyIntegrity(doIngestResults)
     val pidDictionary: PidDictionary = doIngestResults.map(_.get).toMap
-
     pidDictionary.foreach(r => log.info(s"Created digital object: $r"))
 
-    /*
-      Phase 2: Add datastreams
-     */
     log.info(">>> PHASE 2: ADD DATASTREAMS")
-
     val addDatastreamsResults = for {
       doDir <- doDirs
       file <- doDir.listFiles()
       if file.isFile && file.getName != CONFIG_FILENAME && file.getName != FOXML_FILENAME
       mime = configDictionary(doDir.getName).datastreams.find(_.name == file.getName).map(_.mime).getOrElse("application/octet-stream")
     } yield addDataStream(file, pidDictionary(doDir.getName), file.getName, mime)
-
     verifyIntegrity(addDatastreamsResults)
-
     addDatastreamsResults.map(_.get).foreach(r => log.info(s"Added datastream: $r"))
 
-    /*
-      Phase 3: Add relations
-     */
     log.info(">>> PHASE 3: ADD RELATIONS")
-
     val addRelationsResults = doDirs.flatMap(doDir => {
       val relations = configDictionary(doDir.getName).relations
       relations.map(r => addRelation(pidDictionary(doDir.getName), r.predicate, pidDictionary(r.objectName)))
     })
-
     verifyIntegrity(addRelationsResults)
-
     addRelationsResults.map(_.get).foreach(r => log.info(s"Added relation: $r"))
   }
-
 
   private def readDOConfig(doDir: File): Try[DOConfig] =
     doDir.listFiles.find(_.getName == CONFIG_FILENAME) match {

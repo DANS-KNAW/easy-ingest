@@ -24,7 +24,7 @@ object Properties {
 
   var input: InputStream = null
   try {
-    input = new FileInputStream(new File(homedir, "application.properties"))
+    input = new FileInputStream(new File(homedir, "cfg/application.properties"))
     props.load(input)
   }
   catch {
