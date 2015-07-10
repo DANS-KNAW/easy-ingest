@@ -62,7 +62,17 @@ may reference each other by directory name in the relations they define. See ...
 ### Digital Object Configuration File
 
 The Digital Object Configuration file is a [json] file containing additional information that is used to configure the
-digital object and its datastreams.
+digital object and its datastreams. Its structure is 
+
+      <digital-object-config> ::= 
+         {
+            "namespace": <fedora-pid-namespace> (,
+            "datastreams": <datastream-spec-list> (,
+            "relations": <relations-spec-list> ))
+         }
+            
+            
+            
 
 
 
