@@ -63,7 +63,7 @@ may reference each other by directory name in the relations they define. See [Di
 
 The Digital Object Configuration file is a [json] file containing additional information that is used to configure the
 digital object and its datastreams. Its structure is informally specified using the example below. Note that the comments
-introduced with ``--`` are not part of the example and are not legal json
+introduced with ``--`` are not part of the example and are not legal json.
 
       {
         "namespace" : "easy-dataset",                 -- the Fedora PID namespace in which to create
