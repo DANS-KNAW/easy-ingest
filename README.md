@@ -9,7 +9,7 @@ Ingest staged digital objects in a Fedora Commons 3.x repository
 SYNOPSIS
 --------
 
-    easy-ingest.sh staged-digital-object...
+    easy-ingest.sh [staged-digital-object... | staged-digital-object-set]
 
 
 DESCRIPTION
@@ -25,19 +25,34 @@ digital objects that have previously been staged on the client file system.
 
 ### Staged Digital Objects
 
-A Staged Digital Object is a directory in the filesystem of the client that contains all the necessary files to build
-up the digital object in Fedora. It must contain at least a [FOXML] file, called ``fo.xml``. All other files in the directory
-are assumed to be the contents of datastreams. The names of the files are used as datastream IDs.
+A Staged Digital Object (SDO) is a directory in the filesystem of the client that contains all the necessary files to build
+up the digital object in Fedora. It must contain at least: 
+
+* a [FOXML] file, called ``fo.xml``. 
+* a [Digital Object Configuration] file, called ``cfg.json``
+
+All other files in the directory are assumed to be the contents of datastreams. The names of the files are used as datastream 
+IDs by default.
 
 Example:
 
-     - staged-fo
+     - sdo
          |
          +- fo.xml
+         |
+         +- cfg.json
          |
          +- DC
          |
          +- IMAGE_DATA
+         |
+         +- my.xml
+
+### Digital Object Configuration file
+
+
+
+
 
 
 ARGUMENTS
@@ -94,3 +109,4 @@ Steps:
 [client command-line utilities]: https://wiki.duraspace.org/display/FEDORA38/Client+Command-line+Utilities
 [FOXML]: https://wiki.duraspace.org/pages/viewpage.action?pageId=66585857
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
+[Digital Object Configuration]: #digital-object-configuration-file
