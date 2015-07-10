@@ -56,7 +56,7 @@ Configuration] the three datastreams will have these file names as IDs.
 ### Staged Digital Object Set
 
 A Staged Digital Object Set (SDO-set) is a directory containing as its direct subdirectories SDOs. The SDOs in an SDO-set
-may reference each other by directory name in the relations they define. See ... for details.
+may reference each other by directory name in the relations they define. See [Digital Object Configuration] for details.
 
 
 ### Digital Object Configuration File
