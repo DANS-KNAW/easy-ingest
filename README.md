@@ -62,50 +62,58 @@ may reference each other by directory name in the relations they define. See [Di
 ### Digital Object Configuration File
 
 The Digital Object Configuration file is a [json] file containing additional information that is used to configure the
-digital object and its datastreams. Its structure is informally specified using the example below. Note that the comments
-introduced with ``--`` are not part of the example and are not legal json.
+digital object and its datastreams. It is a thin layer over the following Fedora Commons APIs:
+* [ingest]
+* [addDatastream]
+* [addRelationship]
+
+An example will make things clear: 
 
       {
-        "namespace" : "easy-dataset",                 -- the Fedora PID namespace in which to create
-                                                      -- the new digital object
+        "namespace" : "easy-dataset",                 
+        "label": "Social software survey",
+        "ownerId": "dposit", 
         "datastreams" : [
           {
-            "file" : "licence.pdf",                   -- file in the SDO to use for the datastream
-                                                      -- illegal in combination with "url"
-            "id" : "DATASET_LICENSE",                 -- datastream ID, by default the value of "file"
-            "mime" : "application/pdf",               -- MIME-type of the contents, mandatory
-            "control_group": "M",                     -- Fedora control group to use, one of M, X
-                                                      -- if "file" is specified, default M
-            "sha1-checksum": "910ad1aa48cccdce6cac012ab7107e0707b2edfb" -- the hex-encoded SHA-1 digest of
-                                                      -- "file", optional
-                                        
+            "contentFile" : "licence.pdf",                
+            "dsID" : "DATASET_LICENSE",                
+            "mimeType" : "application/pdf",              
+            "controlGroup": "M",  
+            "checksumType": "SHA-1",
+            "checksum": "910ad1aa48cccdce6cac012ab7107e0707b2edfb"
           },
           {
-            "url" : "http://archive.org/remote/file/path.jpg" -- remote URL to use, illegal in combination
-                                                      -- with "file"
-            "id" : "REMOTE_BYTES",                    -- datasream ID, mandatory if "url" is used
-            "mime" : "image/jpeg",                    -- MIME-type of the contents, mandatoyr
-            "control_group": "R"                      -- Fedora control group to use, one of R, E
-                                                      -- if "url" is specified, default "R"
+            "dsLocation" : "http://archive.org/remote/file/path.jpg",
+            "dsID" : "REMOTE_BYTES",                    
+            "mimeType" : "image/jpeg",                    
+            "controlGroup": "R"                      
           },
           { 
-            "file": "EASY_FILE",                      -- will create datastream "EASY_FILE" from 
-            "mime": "text/csv"                        -- the file "EASY_FILE" in the SDO, and use
-                                                      -- control group M.
+            "contentFile": "EASY_FILE",                      
+            "mimeType": "text/csv"                       
           }
         ],
-        "rels-ext" : [
+        "relations" : [
           {
-            "predicate": "fedora:isMemberOf",         -- predicate to use
-            "object_sdo" : "do1"                      -- use the PID that was assigned to SDO "do1" in 
-                                                      -- the same SDO-set
+            "predicate": "fedora:isMemberOf",        
+            "object_sdo" : "do1"                     
           },
           {
             "predicate": "fedora:isSubordinateTo", 
-            "object_pid" : "easy-collection:123"      -- use a fixed PID
+            "object" : "easy-collection:123"     
           }
         ]
       }    
+
+For the names of the properties see the Fedora Commons documentation mentioned above. A few extra properties and shortcuts
+are added by ``easy-ingest``:
+
+* For datastreams:
+    - "contentFile" is a file in de SDO that contains the content for the datastream
+    - the default value for "contentFile" is the value of "dsID"
+* For relations:
+    - "object_sdo" is the name of an SDO in the same SDO-set. ``easy-ingest`` will fill in the resulting Fedora PID here.
+
 
 
 ARGUMENTS
@@ -164,3 +172,6 @@ Steps:
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
 [Digital Object Configuration]: #digital-object-configuration-file
 [json]: http://json.org/
+[ingest]: https://wiki.duraspace.org/display/FEDORA38/REST+API#RESTAPI-ingest
+[addDatastream]: https://wiki.duraspace.org/display/FEDORA38/REST+API#RESTAPI-addDatastream
+[addRelationship]: https://wiki.duraspace.org/display/FEDORA38/REST+API#RESTAPI-addRelationship 
