@@ -41,7 +41,7 @@ object Main {
   type PidDictionary = Map[ObjectName, Pid]
   type ConfigDictionary = Map[ObjectName, DOConfig]
 
-  case class DatastreamSpec(contentFile: String, dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
+  case class DatastreamSpec(contentFile: String = "", dsLocation: String = "", dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
   case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "")
   case class DOConfig(namespace: String, label: String, ownerId: String, datastreams: List[DatastreamSpec], relations: List[Relation])
 
