@@ -9,7 +9,7 @@ Ingest staged digital objects in a Fedora Commons 3.x repository
 SYNOPSIS
 --------
 
-    easy-ingest.sh [staged-digital-object... | staged-digital-object-set]
+    easy-ingest [<staged-digital-object>... | <staged-digital-object-set>]
 
 
 DESCRIPTION
@@ -96,7 +96,7 @@ An example will make things clear:
         "relations" : [
           {
             "predicate": "fedora:isMemberOf",        
-            "object_sdo" : "do1"                     
+            "objectSDO" : "do1"                     
           },
           {
             "predicate": "fedora:isSubordinateTo", 
