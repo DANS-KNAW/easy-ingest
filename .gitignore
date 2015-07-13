@@ -13,6 +13,7 @@ target/
 *.iml
 .idea/
 .DS_Store
+home/
 
 # Eclipse
 /.project
