@@ -3,7 +3,7 @@
 easy-ingest
 ===========
 
-Ingest staged digital objects in a Fedora Commons 3.x repository
+Ingest staged digital objects in a Fedora Commons 3.x repository.
 
 
 SYNOPSIS
@@ -119,11 +119,9 @@ are added by ``easy-ingest``:
 ARGUMENTS
 ---------
 
--u, --user: Fedora user to connect with
-
--p, --password: password of the Fedora user
-
--f, --fcrepo-server: URL of the Fedora Commons Repository server
+* ``-u``, ``--user`` -- Fedora user to connect with
+* ``-p``, ``--password`` -- password of the Fedora user
+* ``-f``, ``--fcrepo-server`` -- URL of the Fedora Commons Repository server
 
 
 INSTALLATION AND CONFIGURATION
