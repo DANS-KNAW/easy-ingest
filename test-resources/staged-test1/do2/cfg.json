@@ -1,7 +1,7 @@
 {
-  "namespace" : "easy-dataset",
-  "label" : "TEST DATASET",
-  "ownerId" : "alonzo",
+  "namespace" : "easy-file",
+  "label" : "TEST FILE",
+  "ownerId" : "alan",
   "datastreams" : [
     {
       "contentFile" : "quicksort.hs",

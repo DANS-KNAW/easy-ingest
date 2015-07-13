@@ -97,12 +97,17 @@ object Main {
   private def ingestDigitalObject(doDir: File)(implicit configDictionary: ConfigDictionary): Try[(ObjectName, Pid)] =
     for {
       foxml <- getFOXML(doDir)
-      pid <- executeIngest(configDictionary(doDir.getName).namespace, foxml)
+      pid <- executeIngest(configDictionary(doDir.getName), foxml)
     } yield (doDir.getName, pid)
 
-  private def executeIngest(namespace: String, foxml: File): Try[Pid] = Try {
-    val pid = getNextPID.namespace(namespace).execute().getPid
-    ingest(pid).label(s"Label for $pid").content(foxml).execute().getPid
+  private def executeIngest(cfg: DOConfig, foxml: File): Try[Pid] = Try {
+    val pid = getNextPID.namespace(cfg.namespace).execute().getPid
+    ingest(pid)
+      .label(cfg.label)
+      .ownerId(cfg.ownerId)
+      .content(foxml)
+      .execute()
+      .getPid
   }
 
   private def addDataStream(file: File, doPid: Pid, dsSpec: DatastreamSpec): Try[URI] = Try {
