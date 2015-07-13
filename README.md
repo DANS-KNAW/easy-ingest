@@ -9,7 +9,7 @@ Ingest staged digital objects in a Fedora Commons 3.x repository.
 SYNOPSIS
 --------
 
-    easy-ingest [<staged-digital-object>... | <staged-digital-object-set>]
+    easy-ingest [-u <user> -p <password>] [-f <fedora-url>] [<staged-digital-object>... | <staged-digital-object-set>]
 
 
 DESCRIPTION
@@ -115,14 +115,17 @@ are added by ``easy-ingest``:
     - "object_sdo" is the name of an SDO in the same SDO-set. ``easy-ingest`` will fill in the resulting Fedora PID here.
 
 
-
 ARGUMENTS
 ---------
 
 * ``-u``, ``--user`` -- Fedora user to connect with
 * ``-p``, ``--password`` -- password of the Fedora user
 * ``-f``, ``--fcrepo-server`` -- URL of the Fedora Commons Repository server
+* ``<staged-digital-object>...`` -- one or more [SDOs] to be ingested
+* ``<staged-digital-object-set>`` -- an [SDO-set] to be ingested
 
+``easy-ingest`` will recognize a directory as an SDO by checking for the ``fo.xml``. If it is absent, it will assume that
+the directory is an SDO-set.
 
 INSTALLATION AND CONFIGURATION
 ------------------------------
@@ -173,3 +176,5 @@ Steps:
 [ingest]: https://wiki.duraspace.org/display/FEDORA38/REST+API#RESTAPI-ingest
 [addDatastream]: https://wiki.duraspace.org/display/FEDORA38/REST+API#RESTAPI-addDatastream
 [addRelationship]: https://wiki.duraspace.org/display/FEDORA38/REST+API#RESTAPI-addRelationship 
+[SDOs]: #staged-digital-objects
+[SDO-set]: #staged-digital-object-set
