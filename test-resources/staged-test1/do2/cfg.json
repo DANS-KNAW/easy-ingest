@@ -1,19 +1,21 @@
 {
-  "namespace" : "easy-dataset",
+  "namespace" : "easy-file",
+  "label" : "TEST FILE",
+  "ownerId" : "alan",
   "datastreams" : [
     {
-      "name" : "quicksort.hs",
-      "mime" : "text/plain"
+      "contentFile" : "quicksort.hs",
+      "mimeType" : "text/plain"
     }
   ],
   "relations" : [
     {
       "predicate": "fedora:isMemberOf",
-      "objectName" : "do1"
+      "objectSDO" : "do1"
     },
     {
       "predicate": "fedora:isSubordinateTo",
-      "objectName" : "do1"
+      "objectSDO" : "do1"
     }
   ]
 }
