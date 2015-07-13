@@ -96,7 +96,7 @@ An example will make things clear:
         "relations" : [
           {
             "predicate": "fedora:isMemberOf",        
-            "object_sdo" : "do1"                     
+            "objectSDO" : "do1"
           },
           {
             "predicate": "fedora:isSubordinateTo", 

@@ -41,16 +41,16 @@ object Main {
   type PidDictionary = Map[ObjectName, Pid]
   type ConfigDictionary = Map[ObjectName, DOConfig]
 
-  case class DatastreamSpec(name: String, mime: String)
-  case class Relation(predicate: Predicate, objectName: ObjectName)
-  case class DOConfig(namespace: String, datastreams: List[DatastreamSpec], relations: List[Relation])
+  case class DatastreamSpec(contentFile: String, dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
+  case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "")
+  case class DOConfig(namespace: String, label: String, ownerId: String, datastreams: List[DatastreamSpec], relations: List[Relation])
 
   def main(args: Array[String]) {
     // TODO: use Scallop for solid command line parsing
     if(args.length < 1) {
       println("Not enough arguments")
       System.exit(1)
-    }    
+    }
     val stageDir = new File(args(0))
     val credentials = new FedoraCredentials(Properties("default.fcrepo-server"), Properties("default.user"), Properties("default.password"))
     val client = new FedoraClient(credentials)
@@ -73,15 +73,16 @@ object Main {
       doDir <- doDirs
       file <- doDir.listFiles()
       if file.isFile && file.getName != CONFIG_FILENAME && file.getName != FOXML_FILENAME
-      mime = configDictionary(doDir.getName).datastreams.find(_.name == file.getName).map(_.mime).getOrElse("application/octet-stream")
-    } yield addDataStream(file, pidDictionary(doDir.getName), file.getName, mime)
+      dsSpec = configDictionary(doDir.getName).datastreams.find(_.contentFile == file.getName)
+        .getOrElse(throw new RuntimeException(s"Can't find specification for datastream: ${doDir.getName}/${file.getName}"))
+    } yield addDataStream(file, pidDictionary(doDir.getName), dsSpec)
     verifyIntegrity(addDatastreamsResults)
     addDatastreamsResults.map(_.get).foreach(r => log.info(s"Added datastream: $r"))
 
     log.info(">>> PHASE 3: ADD RELATIONS")
     val addRelationsResults = doDirs.flatMap(doDir => {
       val relations = configDictionary(doDir.getName).relations
-      relations.map(r => addRelation(pidDictionary(doDir.getName), r.predicate, pidDictionary(r.objectName)))
+      relations.map(r => addRelation(pidDictionary(doDir.getName), r.predicate, pidDictionary(r.objectSDO)))
     })
     verifyIntegrity(addRelationsResults)
     addRelationsResults.map(_.get).foreach(r => log.info(s"Added relation: $r"))
@@ -104,13 +105,22 @@ object Main {
     ingest(pid).label(s"Label for $pid").content(foxml).execute().getPid
   }
 
-  private def addDataStream(file: File, pid: Pid, datastreamId: Pid, mime: String): Try[URI] = Try {
-    addDatastream(pid, datastreamId)
-      .mimeType(mime)
-      .controlGroup("M")
-      .content(file)
-      .execute()
-      .getLocation
+  private def addDataStream(file: File, doPid: Pid, dsSpec: DatastreamSpec): Try[URI] = Try {
+    val datastreamId = if (dsSpec.dsID != "") dsSpec.dsID else dsSpec.contentFile
+    val request =
+      if (dsSpec.checksumType == "")
+        addDatastream(doPid, datastreamId)
+          .content(file)
+          .mimeType(dsSpec.mimeType)
+          .controlGroup(dsSpec.controlGroup)
+      else
+        addDatastream(doPid, datastreamId)
+          .content(file)
+          .mimeType(dsSpec.mimeType)
+          .controlGroup(dsSpec.controlGroup)
+          .checksumType(dsSpec.checksumType)
+          .checksum(dsSpec.checksum)
+    request.execute().getLocation
   }
 
   private def addRelation(subject: Pid, predicate: String, `object`: Pid): Try[(Pid, String, Pid)] = Try {
