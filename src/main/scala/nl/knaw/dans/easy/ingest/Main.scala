@@ -65,7 +65,7 @@ object Main {
     log.info(">>> PHASE 1: INGEST DIGITAL OBJECTS")
     val doIngestResults = doDirs.map(ingestDigitalObject)
     verifyIntegrity(doIngestResults)
-    val pidDictionary: PidDictionary = doIngestResults.map(_.get).toMap
+    implicit val pidDictionary: PidDictionary = doIngestResults.map(_.get).toMap
     pidDictionary.foreach(r => log.info(s"Created digital object: $r"))
 
     log.info(">>> PHASE 2: ADD DATASTREAMS")
@@ -82,7 +82,7 @@ object Main {
     log.info(">>> PHASE 3: ADD RELATIONS")
     val addRelationsResults = doDirs.flatMap(doDir => {
       val relations = configDictionary(doDir.getName).relations
-      relations.map(r => addRelation(pidDictionary(doDir.getName), r.predicate, pidDictionary(r.objectSDO)))
+      relations.map(addRelation(pidDictionary(doDir.getName), _))
     })
     verifyIntegrity(addRelationsResults)
     addRelationsResults.map(_.get).foreach(r => log.info(s"Added relation: $r"))
@@ -123,9 +123,10 @@ object Main {
     request.execute().getLocation
   }
 
-  private def addRelation(subject: Pid, predicate: String, `object`: Pid): Try[(Pid, String, Pid)] = Try {
-    addRelationship(subject).predicate(predicate).`object`(`object`).execute().close()
-    (subject, predicate, `object`)
+  private def addRelation(subjectPid: Pid, relation: Relation)(implicit pidDictionary: PidDictionary): Try[(Pid, String, Pid)] = Try {
+    val objectPid = if (relation.`object` != "") relation.`object` else pidDictionary(relation.objectSDO)
+    addRelationship(subjectPid).predicate(relation.predicate).`object`(objectPid).execute().close()
+    (subjectPid, relation.predicate, objectPid)
   }
 
   private def getFOXML(doDir: File): Try[File] =
