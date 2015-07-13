@@ -9,7 +9,8 @@ Ingest staged digital objects in a Fedora Commons 3.x repository.
 SYNOPSIS
 --------
 
-    easy-ingest [-u <user> -p <password>] [-f <fedora-url>] [<staged-digital-object>... | <staged-digital-object-set>]
+    easy-ingest [-u <user> -p <password>] [-f <fedora-url>] \
+        [<staged-digital-object>... | <staged-digital-object-set>]
 
 
 DESCRIPTION
