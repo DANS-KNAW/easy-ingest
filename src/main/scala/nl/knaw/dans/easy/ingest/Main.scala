@@ -86,14 +86,10 @@ object Main {
 
   private def addDatastreams(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit doDirs: List[File]): Try[List[URI]] = {
     log.info(">>> PHASE 2: ADD DATASTREAMS")
-    val results = for {
+    (for {
       doDir <- doDirs
-      file <- doDir.listFiles()
-      if file.isFile && file.getName != CONFIG_FILENAME && file.getName != FOXML_FILENAME
-      dsSpec = configDictionary(doDir.getName).datastreams.find(_.contentFile == file.getName)
-        .getOrElse(throw new RuntimeException(s"Can't find specification for datastream: ${doDir.getName}/${file.getName}"))
-    } yield addDataStream(file, pidDictionary(doDir.getName), dsSpec)
-    results.sequence
+      dsSpec <- configDictionary(doDir.getName).datastreams
+    } yield addDataStream(doDir, dsSpec, pidDictionary)).sequence
   }
 
   private def addRelations(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit doDirs: List[File]): Try[List[(Pid, String, Pid)]] = {
@@ -126,29 +122,35 @@ object Main {
       .getPid
   }
 
-  private def addDataStream(file: File, doPid: Pid, dsSpec: DatastreamSpec): Try[URI] = Try {
-    val datastreamId = if (dsSpec.dsID != "") dsSpec.dsID else dsSpec.contentFile
-    val request =
-      if (dsSpec.checksumType == "")
-        addDatastream(doPid, datastreamId)
-          .content(file)
-          .mimeType(dsSpec.mimeType)
-          .controlGroup(dsSpec.controlGroup)
-      else
-        addDatastream(doPid, datastreamId)
-          .content(file)
-          .mimeType(dsSpec.mimeType)
-          .controlGroup(dsSpec.controlGroup)
-          .checksumType(dsSpec.checksumType)
-          .checksum(dsSpec.checksum)
-    request.execute().getLocation
-  }
-
   private def addRelation(subjectName: String, pidDictionary: PidDictionary)(relation: Relation): Try[(Pid, String, Pid)] = Try {
     val subjectPid: Pid = pidDictionary(subjectName)
     val objectPid = if (relation.`object` != "") relation.`object` else pidDictionary(relation.objectSDO)
     addRelationship(subjectPid).predicate(relation.predicate).`object`(objectPid).execute().close()
     (subjectPid, relation.predicate, objectPid)
+  }
+
+  private def addDataStream(doDir: File, dsSpec: DatastreamSpec, pidDictionary: PidDictionary): Try[URI] = Try {
+    val datastreamId = (dsSpec.dsID, dsSpec.contentFile, dsSpec.dsLocation) match {
+      case (id, _, _) if id != "" => id
+      case ("", file, _) if file != "" => file
+      case _ => throw new RuntimeException(s"Invalid datastream specification provided in ${doDir.getName}")
+    }
+
+    var request = addDatastream(pidDictionary(doDir.getName), datastreamId).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
+
+    if (dsSpec.checksumType != "" && dsSpec.checksum != "")
+      request = request.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
+
+    if (dsSpec.dsLocation != "") {
+      request = request.dsLocation(dsSpec.dsLocation)
+    } else if (dsSpec.contentFile != "") {
+      request = doDir.listFiles.find(_.getName == dsSpec.contentFile) match {
+        case Some(file) => request.content(file)
+        case None => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
+      }
+    }
+
+    request.execute().getLocation
   }
 
   private def getFOXML(doDir: File): Try[File] =
