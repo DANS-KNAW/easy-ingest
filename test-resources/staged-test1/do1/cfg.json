@@ -18,6 +18,12 @@
     {
       "contentFile" : "quicksort.hs",
       "mimeType" : "text/plain"
+    },
+    {
+      "dsLocation" : "https://wiki.haskell.org/wikiupload/4/4a/HaskellLogoStyPreview-1.png",
+      "dsID" : "REMOTE_BYTES",
+      "mimeType" : "image/png",
+      "controlGroup": "R"
     }
   ],
   "relations" : []
