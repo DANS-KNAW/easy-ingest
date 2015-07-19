@@ -15,7 +15,7 @@
     <scm>
         <developerConnection>scm:git:https://github.com/DANS-KNAW/easy-ingest</developerConnection>
       <tag>HEAD</tag>
-  </scm>
+    </scm>
     <dependencies>
         <dependency>
             <groupId>org.scala-lang</groupId>
