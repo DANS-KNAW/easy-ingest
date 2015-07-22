@@ -72,8 +72,6 @@ An example will make things clear:
 
       {
         "namespace" : "easy-dataset",                 
-        "label": "Social software survey",
-        "ownerId": "dposit", 
         "datastreams" : [
           {
             "contentFile" : "licence.pdf",                
@@ -113,7 +111,7 @@ are added by ``easy-ingest``:
     - "contentFile" is a file in de SDO that contains the content for the datastream
     - the default value for "contentFile" is the value of "dsID"
 * For relations:
-    - "object_sdo" is the name of an SDO in the same SDO-set. ``easy-ingest`` will fill in the resulting Fedora PID here.
+    - "objectSDO" is the name of an SDO in the same SDO-set. ``easy-ingest`` will fill in the resulting Fedora PID here.
 
 
 ARGUMENTS
