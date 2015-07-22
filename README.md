@@ -104,8 +104,11 @@ An example will make things clear:
         ]
       }    
 
-For the names of the properties see the Fedora Commons documentation mentioned above. A few extra properties and shortcuts
-are added by ``easy-ingest``:
+For the names of the properties see the Fedora Commons documentation mentioned above. Please note, that the
+properties "ownerId" and "label" cannot be used in ``cfg.json``. The reason is that the Fedora API seems to ignore them.
+To specify these properties you will have to add them directory to the ``fo.xml`` file.
+
+A few extra properties and shortcuts are added by ``easy-ingest``:
 
 * For datastreams:
     - "contentFile" is a file in de SDO that contains the content for the datastream
