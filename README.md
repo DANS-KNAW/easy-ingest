@@ -9,7 +9,7 @@ Ingest staged digital objects in a Fedora Commons 3.x repository.
 SYNOPSIS
 --------
 
-    easy-ingest [-u <user> -p <password>] [-f <fedora-url>] \
+    easy-ingest [-u <user> -p <password>] [-f <fedora-url>] [-i] \
         [<staged-digital-object>... | <staged-digital-object-set>]
 
 
@@ -123,6 +123,7 @@ ARGUMENTS
 * ``-u``, ``--user`` -- Fedora user to connect with
 * ``-p``, ``--password`` -- password of the Fedora user
 * ``-f``, ``--fcrepo-server`` -- URL of the Fedora Commons Repository server
+* ``-i``, ``--init`` -- initialize the directory as an SDO instead of ingesting it
 * ``<staged-digital-object>...`` -- one or more [SDOs] to be ingested
 * ``<staged-digital-object-set>`` -- an [SDO-set] to be ingested
 
