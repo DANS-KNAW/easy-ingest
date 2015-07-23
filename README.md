@@ -1,5 +1,3 @@
-*Note: this project is in pre-alpha state, so below instructions may not work completely yet*
-
 easy-ingest
 ===========
 
