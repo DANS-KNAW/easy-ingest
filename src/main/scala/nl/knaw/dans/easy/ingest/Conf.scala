@@ -26,7 +26,7 @@ class Conf(args: Seq[String]) extends ScallopConf(args) {
   banner("""
                 |Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository.
                 |
-                |Usage: easy-ingest [-u <user> -p <password>] [-f <fcrepo-server>][-i <number>]
+                |Usage: easy-ingest [-u <user> -p <password>] [-f <fcrepo-server>][-i]
                 |    [<staged-digital-object>... | <staged-digital-object-set>]
                 |Options:
                 |""".stripMargin)
