@@ -20,15 +20,18 @@ package nl.knaw.dans.easy.ingest
 
 import java.io._
 import java.net.URI
+
 import com.yourmediashelf.fedora.client.FedoraClient._
 import com.yourmediashelf.fedora.client.request.FedoraRequest
-import com.yourmediashelf.fedora.client.{ FedoraClient, FedoraCredentials }
+import com.yourmediashelf.fedora.client.{FedoraClient, FedoraCredentials}
+import org.apache.commons.io.FileUtils
+import org.apache.commons.lang.exception.ExceptionUtils._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
-import scala.util.{ Failure, Success, Try }
-import org.apache.commons.io.IOUtils
-import org.apache.commons.io.FileUtils
+
+import scala.util.{Failure, Success, Try}
+
 
 object Main {
   val log = LoggerFactory.getLogger(getClass)
@@ -45,10 +48,10 @@ object Main {
   type ConfigDictionary = Map[ObjectName, DOConfig]
 
   case class DatastreamSpec(contentFile: String = "", dsLocation: String = "", dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
-  case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "")
+  case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "", isLiteral: Boolean = false)
   case class DOConfig(namespace: String, datastreams: List[DatastreamSpec], relations: List[Relation])
 
-  class CompositeException(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${t.getMessage}"))
+  class CompositeException(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${getMessage(t)} ${getStackTrace(t)}"))
 
   def main(args: Array[String]) {
     val opts = new Conf(args)
@@ -102,13 +105,16 @@ object Main {
     log.info(">>> PHASE 2: ADD DATASTREAMS")
     (for {
       sdo <- sdos
+      _ = log.debug(s"Adding datastreams for $sdo")
       dsSpec <- configDictionary(sdo.getName).datastreams
     } yield addDataStream(sdo, dsSpec, pidDictionary)).sequence
   }
 
   private def addRelations(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit sdos: List[File]): Try[List[(Pid, String, Pid)]] = {
     log.info(">>> PHASE 3: ADD RELATIONS")
+    log.debug(s"configDictionary = $configDictionary")
     sdos.flatMap(sdo => {
+      log.debug(s"Adding relations for sdo $sdo")
       val relations = configDictionary(sdo.getName).relations
       relations.map(addRelation(sdo.getName, pidDictionary))
     }).sequence
@@ -136,18 +142,22 @@ object Main {
 
   private def addRelation(subjectName: String, pidDictionary: PidDictionary)(relation: Relation): Try[(Pid, String, Pid)] = Try {
     val subjectPid: Pid = pidDictionary(subjectName)
-    val objectPid = if (relation.`object` != "") relation.`object` else pidDictionary(relation.objectSDO)
-    addRelationship(subjectPid).predicate(relation.predicate).`object`(objectPid).execute().close()
+    val objectPid = if (relation.`object` != "") relation.`object` else pidToUri(pidDictionary(relation.objectSDO))
+    addRelationship(subjectPid).predicate(relation.predicate).`object`(objectPid, relation.isLiteral).execute().close()
     (subjectPid, relation.predicate, objectPid)
   }
 
+  private def pidToUri(pid: String): String = s"info:fedora/$pid"
+
   private def addDataStream(sdo: File, dsSpec: DatastreamSpec, pidDictionary: PidDictionary): Try[URI] = Try {
+    log.debug(s"Getting datastreamId from spec: $dsSpec")
     val datastreamId = (dsSpec.dsID, dsSpec.contentFile, dsSpec.dsLocation) match {
       case (id, _, _) if id != "" => id
       case ("", file, _) if file != "" => file
       case _ => throw new RuntimeException(s"Invalid datastream specification provided in ${sdo.getName}")
     }
 
+    log.debug(s"Adding datastream with dsId = $datastreamId")
     var request = addDatastream(pidDictionary(sdo.getName), datastreamId).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
 
     if (dsSpec.checksumType != "" && dsSpec.checksum != "")
