@@ -1,5 +1,3 @@
-*Note: this project is in pre-alpha state, so below instructions may not work completely yet*
-
 easy-ingest
 ===========
 
@@ -9,7 +7,7 @@ Ingest staged digital objects in a Fedora Commons 3.x repository.
 SYNOPSIS
 --------
 
-    easy-ingest [-u <user> -p <password>] [-f <fedora-url>] \
+    easy-ingest [-u <user> -p <password>] [-f <fedora-url>] [-i] \
         [<staged-digital-object>... | <staged-digital-object-set>]
 
 
@@ -72,8 +70,6 @@ An example will make things clear:
 
       {
         "namespace" : "easy-dataset",                 
-        "label": "Social software survey",
-        "ownerId": "dposit", 
         "datastreams" : [
           {
             "contentFile" : "licence.pdf",                
@@ -106,14 +102,17 @@ An example will make things clear:
         ]
       }    
 
-For the names of the properties see the Fedora Commons documentation mentioned above. A few extra properties and shortcuts
-are added by ``easy-ingest``:
+For the names of the properties see the Fedora Commons documentation mentioned above. Please note, that the
+properties "ownerId" and "label" cannot be used in ``cfg.json``. The reason is that the Fedora API seems to ignore them.
+To specify these properties you will have to add them directory to the ``fo.xml`` file.
+
+A few extra properties and shortcuts are added by ``easy-ingest``:
 
 * For datastreams:
     - "contentFile" is a file in de SDO that contains the content for the datastream
     - the default value for "contentFile" is the value of "dsID"
 * For relations:
-    - "object_sdo" is the name of an SDO in the same SDO-set. ``easy-ingest`` will fill in the resulting Fedora PID here.
+    - "objectSDO" is the name of an SDO in the same SDO-set. ``easy-ingest`` will fill in the resulting Fedora PID here.
 
 
 ARGUMENTS
@@ -122,6 +121,7 @@ ARGUMENTS
 * ``-u``, ``--user`` -- Fedora user to connect with
 * ``-p``, ``--password`` -- password of the Fedora user
 * ``-f``, ``--fcrepo-server`` -- URL of the Fedora Commons Repository server
+* ``-i``, ``--init`` -- initialize the directory as an SDO instead of ingesting it
 * ``<staged-digital-object>...`` -- one or more [SDOs] to be ingested
 * ``<staged-digital-object-set>`` -- an [SDO-set] to be ingested
 

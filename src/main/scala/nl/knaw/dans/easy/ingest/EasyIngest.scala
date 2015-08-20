@@ -1,18 +1,20 @@
-/*******************************************************************************
-  * Copyright 2015 DANS - Data Archiving and Networked Services
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  *   http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  ******************************************************************************/
+/**
+ * *****************************************************************************
+ * Copyright 2015 DANS - Data Archiving and Networked Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * ****************************************************************************
+ */
 
 package nl.knaw.dans.easy.ingest
 
@@ -22,6 +24,8 @@ import java.net.URI
 import com.yourmediashelf.fedora.client.FedoraClient._
 import com.yourmediashelf.fedora.client.request.FedoraRequest
 import com.yourmediashelf.fedora.client.{FedoraClient, FedoraCredentials}
+import org.apache.commons.io.FileUtils
+import org.apache.commons.lang.exception.ExceptionUtils._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
@@ -30,6 +34,9 @@ import scala.util.{Failure, Success, Try}
 
 object EasyIngest {
   val log = LoggerFactory.getLogger(getClass)
+  val home = try { new File(System.getenv("EASY_INGEST_HOME")) }
+             catch { case t: Throwable =>
+               throw new RuntimeException(s"Failed to read EASY_INGEST_HOME (${System.getenv("EASY_INGEST_HOME")})", t)}
   implicit val formats = DefaultFormats
 
   private val CONFIG_FILENAME = "cfg.json"
@@ -42,29 +49,42 @@ object EasyIngest {
   type ConfigDictionary = Map[ObjectName, DOConfig]
 
   case class DatastreamSpec(contentFile: String = "", dsLocation: String = "", dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
-  case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "")
-  case class DOConfig(namespace: String, label: String, ownerId: String, datastreams: List[DatastreamSpec], relations: List[Relation])
+  case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "", isLiteral: Boolean = false)
+  case class DOConfig(namespace: String, datastreams: List[DatastreamSpec], relations: List[Relation])
 
-  class CompositeException(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg,t) => s"$msg\n${t.getMessage}"))
+  class CompositeException(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${getMessage(t)} ${getStackTrace(t)}"))
 
   def main(args: Array[String]) {
-    // TODO: use Scallop for solid command line parsing
-    if (args.length == 1)
-      run(args(0)).get
-    else
-      println("Incorrect arguments. Usage: ./easy-ingest <staged digital object (set) folder>")
+    run(new Conf(args)).get
   }
 
-  def run(sdoDir: String): Try[Unit] = {
-    val stageDir = new File(sdoDir)
-    val credentials = new FedoraCredentials(Properties("default.fcrepo-server"), Properties("default.user"), Properties("default.password"))
-    val client = new FedoraClient(credentials)
-    FedoraRequest.setDefaultClient(client)
-    implicit val doDirs = stageDir.listFiles().filter(_.isDirectory).toList
-    ingestStagedDigitalObjects
+  def run(opts: Conf): Try[Unit] = {
+    val sdo = opts.sdo()
+    if(opts.init()) initSdo(sdo)
+    else {
+      val credentials = new FedoraCredentials(opts.fedoraUrl(), opts.username(), opts.password())
+      val client = new FedoraClient(credentials)
+      FedoraRequest.setDefaultClient(client)
+      implicit val sdos = if (isSdo(sdo)) List[File](sdo)
+      else sdo.listFiles().filter(_.isDirectory).toList
+      ingestStagedDigitalObjects
+    }
   }
 
-  private def ingestStagedDigitalObjects(implicit doDirs: List[File]): Try[Unit] =
+  private def initSdo(dir: File): Try[Unit] = Try {
+    if(!dir.exists) dir.mkdirs()
+    if(dir.isFile) {
+      log.error("Cannot create SDO. {} must be a directory")
+    } else {
+      log.info(s"Creating $FOXML_FILENAME and $CONFIG_FILENAME from templates ...")
+      FileUtils.copyFile(new File(home, "cfg/fo-template.xml"), new File(dir, "fo.xml"))
+      FileUtils.copyFile(new File(home, "cfg/cfg-template.json"), new File(dir, "cfg.json"))
+    }
+  }
+
+  private def isSdo(f: File): Boolean = f.isDirectory && f.list.contains(FOXML_FILENAME)
+
+  private def ingestStagedDigitalObjects(implicit sdos: List[File]): Try[Unit] =
     for {
       configDictionary <- buildConfigDictionary
       pidDictionary <- ingestDigitalObjects(configDictionary)
@@ -75,49 +95,50 @@ object EasyIngest {
       _ = relations.foreach(r => log.info(s"Added relation: $r"))
     } yield ()
 
-  private def buildConfigDictionary(implicit doDirs: List[File]): Try[ConfigDictionary] = {
+  private def buildConfigDictionary(implicit sdos: List[File]): Try[ConfigDictionary] = {
     log.info(">>> PHASE 0: BUILD CONFIG DICTIONARY")
-    doDirs.map(d => readDOConfig(d).map(cfg => (d.getName, cfg))).sequence.map(_.toMap)
+    sdos.map(d => readDOConfig(d).map(cfg => (d.getName, cfg))).sequence.map(_.toMap)
   }
 
-  private def ingestDigitalObjects(configDictionary: ConfigDictionary)(implicit doDirs: List[File]): Try[PidDictionary] = {
+  private def ingestDigitalObjects(configDictionary: ConfigDictionary)(implicit sdos: List[File]): Try[PidDictionary] = {
     log.info(">>> PHASE 1: INGEST DIGITAL OBJECTS")
-    doDirs.map(ingestDigitalObject(configDictionary)).sequence.map(_.toMap)
+    sdos.map(ingestDigitalObject(configDictionary)).sequence.map(_.toMap)
   }
 
-  private def addDatastreams(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit doDirs: List[File]): Try[List[URI]] = {
+  private def addDatastreams(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit sdos: List[File]): Try[List[URI]] = {
     log.info(">>> PHASE 2: ADD DATASTREAMS")
     (for {
-      doDir <- doDirs
-      dsSpec <- configDictionary(doDir.getName).datastreams
-    } yield addDataStream(doDir, dsSpec, pidDictionary)).sequence
+      sdo <- sdos
+      _ = log.debug(s"Adding datastreams for $sdo")
+      dsSpec <- configDictionary(sdo.getName).datastreams
+    } yield addDataStream(sdo, dsSpec, pidDictionary)).sequence
   }
 
-  private def addRelations(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit doDirs: List[File]): Try[List[(Pid, String, Pid)]] = {
+  private def addRelations(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit sdos: List[File]): Try[List[(Pid, String, Pid)]] = {
     log.info(">>> PHASE 3: ADD RELATIONS")
-    doDirs.flatMap(doDir => {
-      val relations = configDictionary(doDir.getName).relations
-      relations.map(addRelation(doDir.getName, pidDictionary))
+    log.debug(s"configDictionary = $configDictionary")
+    sdos.flatMap(sdo => {
+      log.debug(s"Adding relations for sdo $sdo")
+      val relations = configDictionary(sdo.getName).relations
+      relations.map(addRelation(sdo.getName, pidDictionary))
     }).sequence
   }
 
-  private def readDOConfig(doDir: File): Try[DOConfig] =
-    doDir.listFiles.find(_.getName == CONFIG_FILENAME) match {
+  private def readDOConfig(sdo: File): Try[DOConfig] =
+    sdo.listFiles.find(_.getName == CONFIG_FILENAME) match {
       case Some(cfgFile) => Success(parse(cfgFile).extract[DOConfig])
-      case None => Failure(new RuntimeException(s"Couldn't find $CONFIG_FILENAME in ${doDir.getName}"))
+      case None => Failure(new RuntimeException(s"Couldn't find $CONFIG_FILENAME in ${sdo.getName}"))
     }
 
-  private def ingestDigitalObject(configDictionary: ConfigDictionary)(doDir: File): Try[(ObjectName, Pid)] =
+  private def ingestDigitalObject(configDictionary: ConfigDictionary)(sdo: File): Try[(ObjectName, Pid)] =
     for {
-      foxml <- getFOXML(doDir)
-      pid <- executeIngest(configDictionary(doDir.getName), foxml)
-    } yield (doDir.getName, pid)
+      foxml <- getFOXML(sdo)
+      pid <- executeIngest(configDictionary(sdo.getName), foxml)
+    } yield (sdo.getName, pid)
 
   private def executeIngest(cfg: DOConfig, foxml: File): Try[Pid] = Try {
     val pid = getNextPID.namespace(cfg.namespace).execute().getPid
     ingest(pid)
-      .label(cfg.label)
-      .ownerId(cfg.ownerId)
       .content(foxml)
       .execute()
       .getPid
@@ -125,19 +146,23 @@ object EasyIngest {
 
   private def addRelation(subjectName: String, pidDictionary: PidDictionary)(relation: Relation): Try[(Pid, String, Pid)] = Try {
     val subjectPid: Pid = pidDictionary(subjectName)
-    val objectPid = if (relation.`object` != "") relation.`object` else pidDictionary(relation.objectSDO)
-    addRelationship(subjectPid).predicate(relation.predicate).`object`(objectPid).execute().close()
+    val objectPid = if (relation.`object` != "") relation.`object` else pidToUri(pidDictionary(relation.objectSDO))
+    addRelationship(subjectPid).predicate(relation.predicate).`object`(objectPid, relation.isLiteral).execute().close()
     (subjectPid, relation.predicate, objectPid)
   }
 
-  private def addDataStream(doDir: File, dsSpec: DatastreamSpec, pidDictionary: PidDictionary): Try[URI] = Try {
+  private def pidToUri(pid: String): String = s"info:fedora/$pid"
+
+  private def addDataStream(sdo: File, dsSpec: DatastreamSpec, pidDictionary: PidDictionary): Try[URI] = Try {
+    log.debug(s"Getting datastreamId from spec: $dsSpec")
     val datastreamId = (dsSpec.dsID, dsSpec.contentFile, dsSpec.dsLocation) match {
       case (id, _, _) if id != "" => id
       case ("", file, _) if file != "" => file
-      case _ => throw new RuntimeException(s"Invalid datastream specification provided in ${doDir.getName}")
+      case _ => throw new RuntimeException(s"Invalid datastream specification provided in ${sdo.getName}")
     }
 
-    var request = addDatastream(pidDictionary(doDir.getName), datastreamId).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
+    log.debug(s"Adding datastream with dsId = $datastreamId")
+    var request = addDatastream(pidDictionary(sdo.getName), datastreamId).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
 
     if (dsSpec.checksumType != "" && dsSpec.checksum != "")
       request = request.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
@@ -145,7 +170,7 @@ object EasyIngest {
     if (dsSpec.dsLocation != "") {
       request = request.dsLocation(dsSpec.dsLocation)
     } else if (dsSpec.contentFile != "") {
-      request = doDir.listFiles.find(_.getName == dsSpec.contentFile) match {
+      request = sdo.listFiles.find(_.getName == dsSpec.contentFile) match {
         case Some(file) => request.content(file)
         case None => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
       }
@@ -154,10 +179,10 @@ object EasyIngest {
     request.execute().getLocation
   }
 
-  private def getFOXML(doDir: File): Try[File] =
-    doDir.listFiles().find(_.getName == FOXML_FILENAME) match {
+  private def getFOXML(sdo: File): Try[File] =
+    sdo.listFiles().find(_.getName == FOXML_FILENAME) match {
       case Some(f) => Success(f)
-      case None => Failure(new RuntimeException(s"Couldn't find $FOXML_FILENAME in digital object: ${doDir.getName}"))
+      case None => Failure(new RuntimeException(s"Couldn't find $FOXML_FILENAME in digital object: ${sdo.getName}"))
     }
 
   private def verifyIntegrity[T](results: Seq[Try[T]]): Unit =
@@ -169,7 +194,7 @@ object EasyIngest {
   implicit class ListTryExtensions[T](xs: List[Try[T]]) {
     def sequence: Try[List[T]] =
       if (xs.exists(_.isFailure))
-        Failure(new CompositeException(xs.collect{ case Failure(e) => e }))
+        Failure(new CompositeException(xs.collect { case Failure(e) => e }))
       else
         Success(xs.map(_.get))
   }
