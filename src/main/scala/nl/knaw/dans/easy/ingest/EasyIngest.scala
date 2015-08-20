@@ -66,7 +66,7 @@ object EasyIngest {
       val client = new FedoraClient(credentials)
       FedoraRequest.setDefaultClient(client)
       implicit val sdos = if (isSdo(sdo)) List[File](sdo)
-      else sdo.listFiles().filter(_.isDirectory).toList
+                          else sdo.listFiles().filter(_.isDirectory).toList
       ingestStagedDigitalObjects
     }
   }
