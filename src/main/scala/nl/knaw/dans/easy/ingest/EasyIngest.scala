@@ -58,9 +58,9 @@ object EasyIngest {
     run(new Conf(args)).get
   }
 
-  def run(opts: Conf): Try[Unit] = {
+  def run(opts: Conf): Try[PidDictionary] = {
     val sdo = opts.sdo()
-    if(opts.init()) initSdo(sdo)
+    if(opts.init()) initSdo(sdo).map(_ => Map())
     else {
       val credentials = new FedoraCredentials(opts.fedoraUrl(), opts.username(), opts.password())
       val client = new FedoraClient(credentials)
@@ -84,7 +84,7 @@ object EasyIngest {
 
   private def isSdo(f: File): Boolean = f.isDirectory && f.list.contains(FOXML_FILENAME)
 
-  private def ingestStagedDigitalObjects(implicit sdos: List[File]): Try[Unit] =
+  private def ingestStagedDigitalObjects(implicit sdos: List[File]): Try[PidDictionary] =
     for {
       configDictionary <- buildConfigDictionary
       pidDictionary <- ingestDigitalObjects(configDictionary)
@@ -93,7 +93,7 @@ object EasyIngest {
       _ = datastreams.foreach(r => log.info(s"Added datastream: $r"))
       relations <- addRelations(configDictionary, pidDictionary)
       _ = relations.foreach(r => log.info(s"Added relation: $r"))
-    } yield ()
+    } yield pidDictionary
 
   private def buildConfigDictionary(implicit sdos: List[File]): Try[ConfigDictionary] = {
     log.info(">>> PHASE 0: BUILD CONFIG DICTIONARY")
