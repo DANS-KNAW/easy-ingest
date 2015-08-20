@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory
 
 import scala.util.{Failure, Success, Try}
 
-object Main {
+object EasyIngest {
   val log = LoggerFactory.getLogger(getClass)
   implicit val formats = DefaultFormats
 
@@ -49,18 +49,19 @@ object Main {
 
   def main(args: Array[String]) {
     // TODO: use Scallop for solid command line parsing
-    if(args.length < 1) {
-      println("Not enough arguments")
-      System.exit(1)
-    }
-    val stageDir = new File(args(0))
+    if (args.length == 1)
+      run(args(0)).get
+    else
+      println("Incorrect arguments. Usage: ./easy-ingest <staged digital object (set) folder>")
+  }
+
+  def run(sdoDir: String): Try[Unit] = {
+    val stageDir = new File(sdoDir)
     val credentials = new FedoraCredentials(Properties("default.fcrepo-server"), Properties("default.user"), Properties("default.password"))
     val client = new FedoraClient(credentials)
     FedoraRequest.setDefaultClient(client)
-
     implicit val doDirs = stageDir.listFiles().filter(_.isDirectory).toList
-
-    ingestStagedDigitalObjects.get
+    ingestStagedDigitalObjects
   }
 
   private def ingestStagedDigitalObjects(implicit doDirs: List[File]): Try[Unit] =

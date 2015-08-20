@@ -12,7 +12,7 @@
     <artifactId>easy-ingest</artifactId>
     <version>1.x-SNAPSHOT</version>
     <properties>
-        <main-class>nl.knaw.dans.easy.ingest.Main</main-class>
+        <main-class>nl.knaw.dans.easy.ingest.EasyIngest</main-class>
     </properties>
     <dependencies>
         <dependency>
