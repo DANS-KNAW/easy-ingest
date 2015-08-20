@@ -21,9 +21,9 @@ package nl.knaw.dans.easy.ingest
 import java.io._
 import java.net.URI
 
+import com.yourmediashelf.fedora.client.FedoraClient
 import com.yourmediashelf.fedora.client.FedoraClient._
 import com.yourmediashelf.fedora.client.request.FedoraRequest
-import com.yourmediashelf.fedora.client.{FedoraClient, FedoraCredentials}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.exception.ExceptionUtils._
 import org.json4s._
@@ -33,38 +33,37 @@ import org.slf4j.LoggerFactory
 import scala.util.{Failure, Success, Try}
 
 object EasyIngest {
-  val log = LoggerFactory.getLogger(getClass)
-  val home = try { new File(System.getenv("EASY_INGEST_HOME")) }
-             catch { case t: Throwable =>
-               throw new RuntimeException(s"Failed to read EASY_INGEST_HOME (${System.getenv("EASY_INGEST_HOME")})", t)}
-  implicit val formats = DefaultFormats
+  private val log = LoggerFactory.getLogger(getClass)
+  private val home = try { new File(System.getenv("EASY_INGEST_HOME")) }
+                     catch { case t: Throwable =>
+                       throw new RuntimeException(s"Failed to read EASY_INGEST_HOME (${System.getenv("EASY_INGEST_HOME")})", t)}
+  private implicit val formats = DefaultFormats
 
   private val CONFIG_FILENAME = "cfg.json"
   private val FOXML_FILENAME = "fo.xml"
 
-  type ObjectName = String
-  type Pid = String
-  type Predicate = String
-  type PidDictionary = Map[ObjectName, Pid]
-  type ConfigDictionary = Map[ObjectName, DOConfig]
+  private type ObjectName = String
+  private type Pid = String
+  private type Predicate = String
+  private type PidDictionary = Map[ObjectName, Pid]
+  private type ConfigDictionary = Map[ObjectName, DOConfig]
 
-  case class DatastreamSpec(contentFile: String = "", dsLocation: String = "", dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
-  case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "", isLiteral: Boolean = false)
-  case class DOConfig(namespace: String, datastreams: List[DatastreamSpec], relations: List[Relation])
+  private case class DatastreamSpec(contentFile: String = "", dsLocation: String = "", dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
+  private case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "", isLiteral: Boolean = false)
+  private case class DOConfig(namespace: String, datastreams: List[DatastreamSpec], relations: List[Relation])
 
-  class CompositeException(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${getMessage(t)} ${getStackTrace(t)}"))
+  private class CompositeException(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${getMessage(t)} ${getStackTrace(t)}"))
 
   def main(args: Array[String]) {
-    run(new Conf(args)).get
+    implicit val s: Settings = Settings(new Conf(args))
+    run().get
   }
 
-  def run(opts: Conf): Try[PidDictionary] = {
-    val sdo = opts.sdo()
-    if(opts.init()) initSdo(sdo).map(_ => Map())
+  def run()(implicit s: Settings): Try[PidDictionary] = {
+    val sdo = s.sdo
+    if(s.init) initSdo(sdo).map(_ => Map())
     else {
-      val credentials = new FedoraCredentials(opts.fedoraUrl(), opts.username(), opts.password())
-      val client = new FedoraClient(credentials)
-      FedoraRequest.setDefaultClient(client)
+      FedoraRequest.setDefaultClient(new FedoraClient(s.fedoraCredentials))
       implicit val sdos = if (isSdo(sdo)) List[File](sdo)
                           else sdo.listFiles().filter(_.isDirectory).toList
       ingestStagedDigitalObjects
@@ -191,7 +190,7 @@ object EasyIngest {
       System.exit(13)
     }
 
-  implicit class ListTryExtensions[T](xs: List[Try[T]]) {
+  private implicit class ListTryExtensions[T](xs: List[Try[T]]) {
     def sequence: Try[List[T]] =
       if (xs.exists(_.isFailure))
         Failure(new CompositeException(xs.collect { case Failure(e) => e }))
