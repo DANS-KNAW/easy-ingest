@@ -45,8 +45,8 @@ object EasyIngest {
   private type ObjectName = String
   private type Pid = String
   private type Predicate = String
-  private type PidDictionary = Map[ObjectName, Pid]
   private type ConfigDictionary = Map[ObjectName, DOConfig]
+  type PidDictionary = Map[ObjectName, Pid]
 
   private case class DatastreamSpec(contentFile: String = "", dsLocation: String = "", dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
   private case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "", isLiteral: Boolean = false)
