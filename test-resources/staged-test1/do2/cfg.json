@@ -10,12 +10,16 @@
   ],
   "relations" : [
     {
-      "predicate": "fedora:isMemberOf",
+      "predicate" : "http://dans.knaw.nl/ontologies/relations#isMemberOf",
       "objectSDO" : "do1"
     },
     {
-      "predicate": "fedora:isSubordinateTo",
+      "predicate" : "http://dans.knaw.nl/ontologies/relations#isSubordinateTo",
       "objectSDO" : "do1"
+    },
+    {
+      "predicate" : "info:fedora/fedora-system:def/model#hasModel",
+      "object" : "info:fedora/dans-container-item-v1"
     }
   ]
 }
