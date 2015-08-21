@@ -56,10 +56,10 @@ object EasyIngest {
 
   def main(args: Array[String]) {
     implicit val s: Settings = Settings(new Conf(args))
-    run().get
+    run.get
   }
 
-  def run()(implicit s: Settings): Try[PidDictionary] = {
+  def run(implicit s: Settings): Try[PidDictionary] = {
     val sdo = s.sdo
     if(s.init) initSdo(sdo).map(_ => Map())
     else {
