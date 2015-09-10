@@ -71,14 +71,11 @@ object EasyIngest {
   }
 
   private def initSdo(dir: File): Try[Unit] = Try {
-    if(!dir.exists) dir.mkdirs()
-    if(dir.isFile) {
-      log.error("Cannot create SDO. {} must be a directory")
-    } else {
-      log.info(s"Creating $FOXML_FILENAME and $CONFIG_FILENAME from templates ...")
-      FileUtils.copyFile(new File(home, "cfg/fo-template.xml"), new File(dir, "fo.xml"))
-      FileUtils.copyFile(new File(home, "cfg/cfg-template.json"), new File(dir, "cfg.json"))
-    }
+    if(!dir.exists && !dir.mkdirs()) throw new RuntimeException(s"$dir does not exist and cannot be created")
+    if(dir.isFile) throw new RuntimeException(s"Cannot create SDO. $dir is a file. It must either not exist or be a directory")
+    log.info(s"Creating $FOXML_FILENAME and $CONFIG_FILENAME from templates ...")
+    FileUtils.copyFile(new File(home, "cfg/fo-template.xml"), new File(dir, "fo.xml"))
+    FileUtils.copyFile(new File(home, "cfg/cfg-template.json"), new File(dir, "cfg.json"))
   }
 
   private def isSdo(f: File): Boolean = f.isDirectory && f.list.contains(FOXML_FILENAME)
