@@ -24,6 +24,7 @@ import java.net.URI
 import com.yourmediashelf.fedora.client.FedoraClient
 import com.yourmediashelf.fedora.client.FedoraClient._
 import com.yourmediashelf.fedora.client.request.FedoraRequest
+import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.exception.ExceptionUtils._
 import org.json4s._
@@ -34,9 +35,8 @@ import scala.util.{Failure, Success, Try}
 
 object EasyIngest {
   private val log = LoggerFactory.getLogger(getClass)
-  private val home = try { new File(System.getenv("EASY_INGEST_HOME")) }
-                     catch { case t: Throwable =>
-                       throw new RuntimeException(s"Failed to read EASY_INGEST_HOME (${System.getenv("EASY_INGEST_HOME")})", t)}
+  private val home = new File(System.getProperty("app.home"))
+  val props = new PropertiesConfiguration(new File(home, "cfg/application.properties"))
   private implicit val formats = DefaultFormats
 
   private val CONFIG_FILENAME = "cfg.json"
@@ -55,7 +55,7 @@ object EasyIngest {
   private class CompositeException(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${getMessage(t)} ${getStackTrace(t)}"))
 
   def main(args: Array[String]) {
-    implicit val s: Settings = Settings(new Conf(args))
+    implicit val s: Settings = Settings(new Conf(args, props))
     run.get
   }
 

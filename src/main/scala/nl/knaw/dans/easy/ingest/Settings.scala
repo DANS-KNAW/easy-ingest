@@ -26,7 +26,7 @@ object Settings{
   def apply(conf: Conf): Settings =
     new Settings(
       new FedoraCredentials(conf.fedoraUrl(), conf.username(), conf.password()),
-      conf.sdo(),
+      new File(conf.sdo()),
       conf.init())
 }
 
