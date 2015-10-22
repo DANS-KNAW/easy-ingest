@@ -23,12 +23,16 @@ import java.net.URL
 
 class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopConf(args) {
   printedName = "easy-ingest"
+  val indent_____ = printedName.replaceAll(".", " ")
   version(s"$printedName v${Version()}")
-  banner("""
+  banner(s"""
                 |Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository.
                 |
-                |Usage: easy-ingest [-u <user> -p <password>] [-f <fcrepo-server>][-i]
-                |    [<staged-digital-object>... | <staged-digital-object-set>]
+                |Usage:
+                |
+                | $printedName [-u <user> -p <password>] [-f <fcrepo-server>][-i] \\
+                | $indent_____ [<staged-digital-object>... | <staged-digital-object-set>]
+                |
                 |Options:
                 |""".stripMargin)
   val username = opt[String]("username",
