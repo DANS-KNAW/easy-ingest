@@ -1,5 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-java -Dlogback.configurationFile=$EASY_INGEST_HOME/cfg/logback.xml \
-     -Dconfig.file=$EASY_INGEST_HOME/cfg/application.conf \
-     -jar $EASY_INGEST_HOME/bin/easy-ingest.jar $@
+BINPATH=`readlink -f $0`
+APPHOME=`dirname \`dirname $BINPATH \``
+
+java -Dlogback.configurationFile=$APPHOME/cfg/logback.xml \
+     -Dapp.home=$APPHOME \
+     -jar $APPHOME/bin/easy-ingest.jar $@
