@@ -86,9 +86,9 @@ object EasyIngest {
       pidDictionary <- ingestDigitalObjects(configDictionary)
       _ = pidDictionary.foreach(r => log.info(s"Created digital object: $r"))
       datastreams <- addDatastreams(configDictionary, pidDictionary)
-      _ = datastreams.foreach(r => log.info(s"Added datastream: $r"))
+      _ = datastreams.foreach(r => log.debug(s"Added datastream: $r"))
       relations <- addRelations(configDictionary, pidDictionary)
-      _ = relations.foreach(r => log.info(s"Added relation: $r"))
+      _ = relations.foreach(r => log.debug(s"Added relation: $r"))
     } yield pidDictionary
 
   private def buildConfigDictionary(implicit sdos: List[File]): Try[ConfigDictionary] = {
