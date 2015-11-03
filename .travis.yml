@@ -1,5 +1,2 @@
-before_script:
-  - git clone https://github.com/DANS-KNAW/dans-parent.git
-  - mvn install -C dans-parent
-
 language: java
+jdk: oraclejdk8
