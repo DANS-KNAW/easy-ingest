@@ -150,17 +150,10 @@ BUILDING FROM SOURCE
 
 Prerequisites:
 
-* Java 7 or higher
+* Java 8 or higher
 * Maven 3.3.3 or higher
  
 Steps:
-
-1. Clone and build the [dans-parent] project (*can be skipped if you have access to the DANS maven repository*)
-      
-        git clone https://github.com/DANS-KNAW/dans-parent.git
-        cd dans-parent
-        mvn install
-2. Clone and build this project
 
         git clone https://github.com/DANS-KNAW/easy-ingest.git
         cd easy-ingest
