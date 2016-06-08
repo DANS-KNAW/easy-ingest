@@ -1,7 +1,7 @@
 {
   "namespace" : "easy-dataset",
   "label" : "TEST DATASET",
-  "ownerId" : "alonzo",
+  "ownerId" : "user001",
   "datastreams" : [
     {
       "contentFile" : "license.pdf",
@@ -13,6 +13,10 @@
     },
     {
       "contentFile" : "AMD",
+      "mimeType" : "application/xml"
+    },
+    {
+      "contentFile" : "EMD",
       "mimeType" : "application/xml"
     },
     {

@@ -164,12 +164,28 @@ object EasyIngest {
       request = request.dsLocation(dsSpec.dsLocation)
     } else if (dsSpec.contentFile != "") {
       request = sdo.listFiles.find(_.getName == dsSpec.contentFile) match {
-        case Some(file) => request.content(file)
+        case Some(file) =>
+          if (datastreamId == "EMD") {
+            val placeholder = "$sdo-id"
+            val tmpFile = File.createTempFile(file.getName(), null)
+            replaceInFileCopy(file, tmpFile, placeholder, pidDictionary(sdo.getName))
+            log.debug(s"Replacing placeholder '$placeholder' with '${pidDictionary(sdo.getName)}' in datastream '$datastreamId', temp file=${tmpFile.getAbsolutePath()}")
+            request.content(tmpFile)
+            val location = request.execute().getLocation
+            FileUtils.deleteQuietly(tmpFile)
+            return Success(location)
+          }
+          request.content(file)
         case None => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
       }
     }
-
     request.execute().getLocation
+  }
+
+  def replaceInFileCopy(src:File, dst:File, replaceString:String, replacement:String) = {
+    val srcContent = FileUtils.readFileToString(src)
+    val transformedContent = srcContent.replace(replaceString,replacement)
+    FileUtils.writeStringToFile(dst, transformedContent)
   }
 
   private def getFOXML(sdo: File): Try[File] =
