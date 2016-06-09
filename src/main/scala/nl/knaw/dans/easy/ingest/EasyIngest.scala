@@ -167,9 +167,9 @@ object EasyIngest {
         case Some(file) =>
           if (datastreamId == "EMD") {
             val placeholder = "$sdo-id"
-            val tmpFile = File.createTempFile(file.getName(), null)
-            replaceInFileCopy(file, tmpFile, placeholder, pidDictionary(sdo.getName))
-            log.debug(s"Replacing placeholder '$placeholder' with '${pidDictionary(sdo.getName)}' in datastream '$datastreamId', temp file=${tmpFile.getAbsolutePath()}")
+            val tmpFile = File.createTempFile(file.getName, null)
+            // Note that this would change the file's checksum, but it is only for the EMD datastream, which has no checksum
+            replacePlaceholderInFileCopy(file, tmpFile, placeholder, pidDictionary(sdo.getName))
             request.content(tmpFile)
             val location = request.execute().getLocation
             FileUtils.deleteQuietly(tmpFile)
@@ -182,10 +182,14 @@ object EasyIngest {
     request.execute().getLocation
   }
 
-  def replaceInFileCopy(src:File, dst:File, replaceString:String, replacement:String) = {
+  private def replacePlaceholderInFileCopy(src:File, dst:File, placeholder:String, replacement:String): Unit = {
+    // these files are assumed to be small enough to be read into memory without problems
     val srcContent = FileUtils.readFileToString(src)
-    val transformedContent = srcContent.replace(replaceString,replacement)
+    if (!srcContent.contains(placeholder))
+      throw new RuntimeException(s"Missing placeholder '$placeholder' in file: $src.getAbsolutePath")
+    val transformedContent = srcContent.replaceAll(placeholder, replacement)
     FileUtils.writeStringToFile(dst, transformedContent)
+    log.debug(s"Replaced placeholder '$placeholder' with '$replacement' while copying from file '$src.getAbsolutePath', to file '$dst.getAbsolutePath'")
   }
 
   private def getFOXML(sdo: File): Try[File] =
