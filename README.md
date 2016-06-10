@@ -119,7 +119,7 @@ A few extra properties and shortcuts are added by ``easy-ingest``:
 ARGUMENTS
 ---------
 
-* ``-u``, ``--user`` -- Fedora user to connect with
+* ``-u``, ``--username`` -- Fedora user to connect with
 * ``-p``, ``--password`` -- password of the Fedora user
 * ``-f``, ``--fcrepo-server`` -- URL of the Fedora Commons Repository server
 * ``-i``, ``--init`` -- initialize the directory as an SDO instead of ingesting it

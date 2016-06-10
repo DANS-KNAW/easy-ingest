@@ -15,12 +15,15 @@
  */
 package nl.knaw.dans.easy.ingest
 
-import org.apache.commons.configuration.PropertiesConfiguration
-import org.rogach.scallop.ScallopConf
-import java.io.File
 import java.net.URL
 
+import org.apache.commons.configuration.PropertiesConfiguration
+import org.rogach.scallop.ScallopConf
+
 class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopConf(args) {
+  appendDefaultToDescription = true
+  editBuilder(_.setHelpWidth(110))
+
   printedName = "easy-ingest"
   val indent_____ = printedName.replaceAll(".", " ")
   version(s"$printedName v${Version()}")
@@ -29,28 +32,30 @@ class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopCon
                 |
                 |Usage:
                 |
-                | $printedName [-u <user> -p <password>] [-f <fcrepo-server>][-i] \\
+                | $printedName [-u <user> -p <password>] [-f <fcrepo-server>] [-i] \\
                 | $indent_____ [<staged-digital-object>... | <staged-digital-object-set>]
                 |
                 |Options:
                 |""".stripMargin)
+  private val s = " provided, please check {{app.home}}/cfg/application.properties"
+  val fedoraUrl = opt[URL](name = "fcrepo-server",
+    descr = "URL of the Fedora Commons Repository Server",
+    default = props.getString("default.fcrepo-server") match {
+      case s: String => Some(new URL(s))
+      case _ =>
+        throw new RuntimeException("No valid default Fedora Commons URL" + s)
+    })
   val username = opt[String]("username",
     descr = "Username to use for authentication/authorisation to the Fedora Commons Repository Server",
     default = props.getString("default.user") match {
       case s: String => Some(s)
-      case _ => throw new RuntimeException("No username provided")
+      case _ => throw new RuntimeException("No default username" + s)
     })
   val password = opt[String]("password",
     descr = "Password to use for authentication/authorisation to the Fedora Commons Repository Server",
     default = props.getString("default.password") match {
       case s: String => Some(s)
-      case _ => throw new RuntimeException("No password provided")
-    })
-  val fedoraUrl = opt[URL](name = "fcrepo-server",
-    descr = "URL of the Fedora Commons Repository Server",
-    default = props.getString("default.fcrepo-server") match {
-      case s: String => Some(new URL(s))
-      case _ => throw new RuntimeException("No Fedora Commons URL provided")
+      case _ => throw new RuntimeException("No default password" + s)
     })
   val init = opt[Boolean](name = "init",
     descr = "Initialize template SDO instead of ingesting",
@@ -60,5 +65,5 @@ class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopCon
     name = "<staged-digital-object-(set)>",
     descr = "Either a single Staged Digital Object or a set of SDO's",
     required = true)
- 
+  verify()
 } 
