@@ -25,7 +25,7 @@ class ConfSpec extends FlatSpec with Matchers {
 
 
   val helpInfo = {
-    val propsFile = new File("tearget/test/application.properties")
+    val propsFile = new File("target/test/application.properties")
     FileUtils.write(propsFile, "default.fcrepo-server=http://deasy.dans.knaw.nl:8080/fedora\n" +
       "default.user=u\n" +
       "default.password=p")
