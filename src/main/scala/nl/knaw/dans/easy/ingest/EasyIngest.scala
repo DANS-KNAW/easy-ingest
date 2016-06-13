@@ -189,10 +189,10 @@ object EasyIngest {
     // these files are assumed to be small enough to be read into memory without problems
     val srcContent = FileUtils.readFileToString(src)
     if (!srcContent.contains(placeholder))
-      throw new RuntimeException(s"Missing placeholder '$placeholder' in file: $src.getAbsolutePath")
+      throw new RuntimeException(s"Missing placeholder '$placeholder' in file: ${src.getAbsolutePath}")
     val transformedContent = srcContent.replaceAll(placeholder, replacement)
     FileUtils.writeStringToFile(dst, transformedContent)
-    log.debug(s"Replaced placeholder '$placeholder' with '$replacement' while copying from file '$src.getAbsolutePath', to file '$dst.getAbsolutePath'")
+    log.debug(s"Replaced placeholder '$placeholder' with '$replacement' while copying from file '${src.getAbsolutePath}', to file '${dst.getAbsolutePath}'")
   }
 
   private def getFOXML(sdo: File): Try[File] =
