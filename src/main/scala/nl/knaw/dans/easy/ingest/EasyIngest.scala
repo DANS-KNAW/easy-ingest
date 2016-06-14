@@ -18,7 +18,7 @@ package nl.knaw.dans.easy.ingest
 import java.io._
 import java.net.URI
 
-import com.yourmediashelf.fedora.client.FedoraClient
+import com.yourmediashelf.fedora.client.{FedoraClient, FedoraClientException}
 import com.yourmediashelf.fedora.client.FedoraClient._
 import com.yourmediashelf.fedora.client.request.{AddDatastream, FedoraRequest}
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -49,11 +49,10 @@ object EasyIngest {
   private case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "", isLiteral: Boolean = false)
   private case class DOConfig(namespace: String, datastreams: List[DatastreamSpec], relations: List[Relation])
 
-  private class CompositeException(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${getMessage(t)} ${getStackTrace(t)}"))
-
   def main(args: Array[String]) {
     implicit val s: Settings = Settings(new Conf(args, props))
-    run.get
+    run.doOnError(e => log.error("Ingest failed",e)).
+      doOnSuccess(dict => log.info(s"ingested: ${dict.values.mkString(", ")}"))
   }
 
   def run(implicit s: Settings): Try[PidDictionary] = {
@@ -95,7 +94,7 @@ object EasyIngest {
 
   private def ingestDigitalObjects(configDictionary: ConfigDictionary)(implicit sdos: List[File]): Try[PidDictionary] = {
     log.info(">>> PHASE 1: INGEST DIGITAL OBJECTS")
-    sdos.map(ingestDigitalObject(configDictionary)).sequence.map(_.toMap)
+    sdos.map(ingestDigitalObject(configDictionary)).squashedSequence.map(_.toMap)
   }
 
   private def addDatastreams(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit sdos: List[File]): Try[List[URI]] = {
@@ -127,6 +126,7 @@ object EasyIngest {
     for {
       foxml <- getFOXML(sdo)
       pid <- executeIngest(configDictionary(sdo.getName), foxml)
+      _ = log.info(s"ingested $pid $foxml")
     } yield (sdo.getName, pid)
 
   private def executeIngest(cfg: DOConfig, foxml: File): Try[Pid] = Try {
@@ -135,6 +135,13 @@ object EasyIngest {
       .content(foxml)
       .execute()
       .getPid
+  }.recoverWith {
+    // a stack trace for each file (with for example an invalid SHA-1) only clutters the logging
+    // anyway we want to add the file name to the message
+    case e: FedoraClientException =>
+      // the HTTP 500 Error wraps the full stack trace in the message without using the cause
+      Failure(new Exception(s"ingest failed $foxml : ${e.getMessage.replaceAll("\n.*","")}"))
+    case e => Failure(new Exception(s"$foxml : ${e.getMessage}"))
   }
 
   private def addRelation(subjectName: String, pidDictionary: PidDictionary)(relation: Relation): Try[(Pid, String, Pid)] = Try {
@@ -208,12 +215,19 @@ object EasyIngest {
       System.exit(13)
     }
 
+  private class CompositeException(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${getMessage(t)} ${getStackTrace(t)}"))
+  private class CompositeExceptionMessages(throwables: List[Throwable]) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${getMessage(t)}"))
   private implicit class ListTryExtensions[T](xs: List[Try[T]]) {
     def sequence: Try[List[T]] =
       if (xs.exists(_.isFailure))
         Failure(new CompositeException(xs.collect { case Failure(e) => e }))
       else
         Success(xs.map(_.get))
-  }
 
+    def squashedSequence: Try[List[T]] =
+      if (xs.exists(_.isFailure))
+        Failure(new CompositeExceptionMessages(xs.collect { case Failure(e) => e}))
+      else
+        Success(xs.map(_.get))
+  }
 }
