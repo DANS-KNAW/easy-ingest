@@ -20,7 +20,7 @@ import java.net.URI
 
 import com.yourmediashelf.fedora.client.FedoraClient
 import com.yourmediashelf.fedora.client.FedoraClient._
-import com.yourmediashelf.fedora.client.request.FedoraRequest
+import com.yourmediashelf.fedora.client.request.{AddDatastream, FedoraRequest}
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.exception.ExceptionUtils._
@@ -163,13 +163,37 @@ object EasyIngest {
     if (dsSpec.dsLocation != "") {
       request = request.dsLocation(dsSpec.dsLocation)
     } else if (dsSpec.contentFile != "") {
-      request = sdo.listFiles.find(_.getName == dsSpec.contentFile) match {
-        case Some(file) => request.content(file)
-        case None => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
+      request = (datastreamId, sdo.listFiles.find(_.getName == dsSpec.contentFile)) match {
+        case ("EMD", Some(file)) =>
+          // Note that this would change the ingested file's checksum, but it is only for the EMD datastream, which has no checksum
+          return executeAddRequestWithReplacement(request, file, "$sdo-id", pidDictionary(sdo.getName))
+        case (_, Some(file)) => request.content(file)
+        case (_, None) => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
       }
     }
-
     request.execute().getLocation
+  }
+
+  private def executeAddRequestWithReplacement(request: AddDatastream, file: File, placeholder: String, replacement:String): Try[URI] = {
+    val tmpFile = File.createTempFile(file.getName, null)
+    log.debug(s"Created temp file: '$tmpFile.getAbsolutePath'")
+
+    replacePlaceholderInFileCopy(file, tmpFile, placeholder, replacement)
+      .map(_ => request.content(tmpFile).execute().getLocation)
+      .eventually(() => {
+        log.debug(s"Deleting temp file: '$tmpFile.getAbsolutePath'")
+        FileUtils.deleteQuietly(tmpFile)
+      })
+  }
+
+  private def replacePlaceholderInFileCopy(src: File, dst: File, placeholder: String, replacement: String): Try[Unit] = Try {
+    // these files are assumed to be small enough to be read into memory without problems
+    val srcContent = FileUtils.readFileToString(src)
+    if (!srcContent.contains(placeholder))
+      throw new RuntimeException(s"Missing placeholder '$placeholder' in file: ${src.getAbsolutePath}")
+    val transformedContent = srcContent.replaceAll(placeholder, replacement)
+    FileUtils.writeStringToFile(dst, transformedContent)
+    log.debug(s"Replaced placeholder '$placeholder' with '$replacement' while copying from file '${src.getAbsolutePath}', to file '${dst.getAbsolutePath}'")
   }
 
   private def getFOXML(sdo: File): Try[File] =
