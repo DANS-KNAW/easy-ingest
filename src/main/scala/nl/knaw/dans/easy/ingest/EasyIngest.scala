@@ -15,21 +15,27 @@
  */
 package nl.knaw.dans.easy.ingest
 
-import java.io._
+import java.io.{ByteArrayOutputStream, _}
 import java.net.URI
 
-import com.yourmediashelf.fedora.client.{FedoraClient, FedoraClientException}
 import com.yourmediashelf.fedora.client.FedoraClient._
 import com.yourmediashelf.fedora.client.request.{AddDatastream, FedoraRequest}
+import com.yourmediashelf.fedora.client.{FedoraClient, FedoraClientException}
+import nl.knaw.dans.easy.ingest.Settings.AdministrativeMetadata
+import nl.knaw.dans.easy.license.{FileItem, LicenseCreator, Parameters}
+import nl.knaw.dans.pf.language.emd.binding.EmdUnmarshaller
+import nl.knaw.dans.pf.language.emd.{EasyMetadata, EasyMetadataImpl}
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.exception.ExceptionUtils._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
+import rx.lang.scala.Observable
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
+import scala.xml.XML
 
 object EasyIngest {
   private val log = LoggerFactory.getLogger(getClass)
@@ -39,6 +45,7 @@ object EasyIngest {
 
   private val CONFIG_FILENAME = "cfg.json"
   private val FOXML_FILENAME = "fo.xml"
+  private val DATASET_NAMESPACE = "easy-dataset:"
 
   private type ObjectName = String
   private type Pid = String
@@ -57,37 +64,97 @@ object EasyIngest {
       .doOnSuccess(dict => log.info(s"ingested: ${dict.values.mkString(", ")}"))
   }
 
-  def run(implicit s: Settings): Try[PidDictionary] = {
-    val sdo = s.sdo
-    if(s.init) initSdo(sdo).map(_ => Map())
-    else {
-      FedoraRequest.setDefaultClient(new FedoraClient(s.fedoraCredentials))
-      implicit val sdos = if (isSdo(sdo)) List[File](sdo)
-                          else sdo.listFiles().filter(_.isDirectory).toList
-      ingestStagedDigitalObjects
-    }
-  }
+  def run(implicit s: Settings): Try[PidDictionary] =
+    if (s.init) initSdo(s.sdo).map(_ => Map())
+    else for {
+      _ <- Try {FedoraRequest.setDefaultClient(new FedoraClient(s.fedoraCredentials))}
+      sdos = getSdoList(s.sdo)
+      pidDict <- ingestStagedDigitalObjects(s.emd, s.amd)(sdos)
+    } yield pidDict
+
+  def getSdoList(sdo: File): List[File] =
+    if (isSdo(sdo)) List[File](sdo)
+    else sdo.listFiles().filter(_.isDirectory).toList
 
   private def initSdo(dir: File): Try[Unit] = Try {
     if(!dir.exists && !dir.mkdirs()) throw new RuntimeException(s"$dir does not exist and cannot be created")
     if(dir.isFile) throw new RuntimeException(s"Cannot create SDO. $dir is a file. It must either not exist or be a directory")
     log.info(s"Creating $FOXML_FILENAME and $CONFIG_FILENAME from templates ...")
-    FileUtils.copyFile(new File(home, "cfg/fo-template.xml"), new File(dir, "fo.xml"))
-    FileUtils.copyFile(new File(home, "cfg/cfg-template.json"), new File(dir, "cfg.json"))
+    FileUtils.copyFile(new File(home, "cfg/fo-template.xml"), new File(dir, FOXML_FILENAME))
+    FileUtils.copyFile(new File(home, "cfg/cfg-template.json"), new File(dir, CONFIG_FILENAME))
   }
 
   private def isSdo(f: File): Boolean = f.isDirectory && f.list.contains(FOXML_FILENAME)
 
-  private def ingestStagedDigitalObjects(implicit sdos: List[File]): Try[PidDictionary] =
+  private def ingestStagedDigitalObjects(emd: Option[EasyMetadata], amd: Option[AdministrativeMetadata])(implicit sdos: List[File]): Try[PidDictionary] =
     for {
       configDictionary <- buildConfigDictionary
       pidDictionary <- ingestDigitalObjects(configDictionary)
       _ = pidDictionary.foreach(r => log.info(s"Created digital object: $r"))
+      fileItems <- getFileItems(pidDictionary, configDictionary)
+      sdoToId = pidDictionary.toList.find(kv => kv._2.startsWith(DATASET_NAMESPACE))
+      _ <- createLicense(sdoToId, fileItems, emd, amd)
       datastreams <- addDatastreams(configDictionary, pidDictionary)
       _ = datastreams.foreach(r => log.debug(s"Added datastream: $r"))
       relations <- addRelations(configDictionary, pidDictionary)
       _ = relations.foreach(r => log.debug(s"Added relation: $r"))
     } yield pidDictionary
+
+  private def createLicense(maybeSdoToId: Option[(ObjectName, Pid)],
+                            fileItems: Seq[FileItem],
+                            maybeEMD: Option[EasyMetadata],
+                            maybeAMD: Option[AdministrativeMetadata]
+                           ): Try[Unit] = {
+    implicit val outputStream = new ByteArrayOutputStream()
+    ((maybeEMD, maybeAMD, maybeSdoToId) match {
+      case (Some(emd), Some(amd), Some((_, datasetId))) => licenseViaIngestFlow(datasetId, fileItems, emd, amd)
+      case (None, None, Some((objectName, datasetId))) => licenseAfterStageDataset(datasetId, fileItems, objectName)
+      case (_, _, _) => licenseAfterStageFileItem(datasetId = ???) // from cfg.json isSubordinateTo
+    }).map(observable => observable
+      .doOnCompleted(addDatastream(???, "DATASET_LICENSE") // TODO get datasetId in scope
+        .controlGroup("M")
+        .versionable(true)
+        .mimeType("application/pdf")
+        .dsLabel("license.pdf")
+        .content(new ByteArrayInputStream(outputStream.toByteArray))
+        // optional checksum
+        // request.checksumType("SHA-1")
+        .execute().getLocation) // TODO error handling
+    )}
+
+  private def licenseAfterStageFileItem(datasetId: String)(implicit outputStream: OutputStream) = Try {
+    val parameters = new Parameters(templateResourceDir = ???, datasetID = datasetId, isSample = false, fedora = ???, ldap = ???)
+    LicenseCreator(parameters).createLicense(outputStream)
+  }
+
+  private def licenseAfterStageDataset(datasetId: String,
+                                       fileItems: Seq[FileItem],
+                                       objectName: ObjectName
+                                      )(implicit outputStream: OutputStream): Try[Observable[Nothing]] = {
+    def is(sdoStreamName: String) = new FileInputStream(new File(objectName, sdoStreamName)) // TODO objectName is relative to Settings.sdo which is out of scope!
+    for {
+      emd <- Try {new EmdUnmarshaller[EasyMetadata](classOf[EasyMetadataImpl]).unmarshal(is("EMD"))}
+      amd <- Try {XML.load(is("AMD"))}
+      lc <- licenseViaIngestFlow(datasetId, fileItems, emd, amd)
+    } yield (lc)
+  }
+
+  private def licenseViaIngestFlow(datasetId: String,
+                                   fileItems: Seq[FileItem],
+                                   emd: EasyMetadata, amd: AdministrativeMetadata
+                                  )(implicit outputStream: OutputStream) = for {
+    depositorId <- Try{(amd \\ "depositorId").text.toString}
+    _ = emd.getEmdIdentifier.setDatasetId(datasetId)
+    outputStream = new ByteArrayOutputStream()
+    parameters = new Parameters(templateResourceDir = ???, datasetId, isSample = false, fedora = ???, ldap = ???)
+    lc = LicenseCreator(parameters).createLicense(emd, depositorId, fileItems)(outputStream)
+  } yield (lc)
+
+  def getFileItems(pidDictionary: PidDictionary, configDictionary: ConfigDictionary): Try[Seq[FileItem]] = Try {
+    // visibleTo read with licenseAfterStageDataset.is("EASY_FILE_METADATA")
+    // checksum not yet read from cfg.json into configDictionary
+    pidDictionary.keySet.map(x => FileItem(path = ???, accessibleTo = ???, checkSum = ???)).toList
+  }
 
   private def buildConfigDictionary(implicit sdos: List[File]): Try[ConfigDictionary] = {
     log.info(">>> PHASE 0: BUILD CONFIG DICTIONARY")
