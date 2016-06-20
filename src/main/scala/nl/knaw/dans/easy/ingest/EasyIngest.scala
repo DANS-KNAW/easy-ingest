@@ -28,6 +28,7 @@ import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
 
+import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 object EasyIngest {
@@ -44,6 +45,7 @@ object EasyIngest {
   private type Predicate = String
   private type ConfigDictionary = Map[ObjectName, DOConfig]
   type PidDictionary = Map[ObjectName, Pid]
+  def PidDictionary() = Map[ObjectName, Pid]()
 
   private case class DatastreamSpec(contentFile: String = "", dsLocation: String = "", dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
   private case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "", isLiteral: Boolean = false)
@@ -51,8 +53,8 @@ object EasyIngest {
 
   def main(args: Array[String]) {
     implicit val s: Settings = Settings(new Conf(args, props))
-    run.doOnError(e => log.error("Ingest failed",e)).
-      doOnSuccess(dict => log.info(s"ingested: ${dict.values.mkString(", ")}"))
+    run.doOnError(e => log.error("Ingest failed",e))
+      .doOnSuccess(dict => log.info(s"ingested: ${dict.values.mkString(", ")}"))
   }
 
   def run(implicit s: Settings): Try[PidDictionary] = {
@@ -93,9 +95,30 @@ object EasyIngest {
   }
 
   private def ingestDigitalObjects(configDictionary: ConfigDictionary)(implicit sdos: List[File]): Try[PidDictionary] = {
+
+    // the full message is repeated in the cause
+    // if stripping fails due to library changes we just have a less crisp top level message
+    def stripMessage(e: Throwable): String = e.getMessage.replaceAll(".*Checksum Mismatch:", "Checksum Mismatch:")
+
+    @tailrec
+    def failFastLoop (sdos: List[File], ingested: PidDictionary = PidDictionary()): Try[PidDictionary] = {
+      if (sdos.isEmpty)
+        Success(ingested)
+      else (ingestDigitalObject(configDictionary, sdos.head), ingested.isEmpty) match {
+        case (Failure(e),true) =>
+          Failure (new Exception (s"Failed to ingest ${sdos.head} : ${stripMessage(e)}", e))
+        case (Failure(e),false) =>
+          partialFailure(ingested, s"but then failed to ingest ${sdos.head} : ${stripMessage(e)}", e)
+        case (Success(t),_) =>
+          failFastLoop(sdos.tail, ingested ++ List(t))
+      }
+    }
     log.info(">>> PHASE 1: INGEST DIGITAL OBJECTS")
-    sdos.map(ingestDigitalObject(configDictionary)).collectResults(includeStackTraces = true).map(_.toMap)
+    failFastLoop(sdos)
   }
+
+  private def partialFailure(pidDictionary: PidDictionary, s: String, e: Throwable): Failure[Nothing] =
+    Failure(new Exception(s"ingested: ${pidDictionary.values.mkString(", ")}\n$s\n", e))
 
   private def addDatastreams(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit sdos: List[File]): Try[List[URI]] = {
     log.info(">>> PHASE 2: ADD DATASTREAMS")
@@ -103,7 +126,10 @@ object EasyIngest {
       sdo <- sdos
       _ = log.debug(s"Adding datastreams for $sdo")
       dsSpec <- configDictionary(sdo.getName).datastreams
-    } yield addDataStream(sdo, dsSpec, pidDictionary)).collectResults()
+    } yield addDataStream(sdo, dsSpec, pidDictionary)).collectResults().recoverWith{
+      case e =>
+        partialFailure(pidDictionary, s"but failed to add datastream(s) ${e.getMessage}", e)
+    }
   }
 
   private def addRelations(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit sdos: List[File]): Try[List[(Pid, String, Pid)]] = {
@@ -113,7 +139,10 @@ object EasyIngest {
       log.debug(s"Adding relations for sdo $sdo")
       val relations = configDictionary(sdo.getName).relations
       relations.map(addRelation(sdo.getName, pidDictionary))
-    }).collectResults()
+    }).collectResults().recoverWith{
+      case e =>
+        partialFailure(pidDictionary, s"but failed to add relation(s) ${e.getMessage}", e)
+    }
   }
 
   private def readDOConfig(sdo: File): Try[DOConfig] =
@@ -122,12 +151,10 @@ object EasyIngest {
       case None => Failure(new RuntimeException(s"Couldn't find $CONFIG_FILENAME in ${sdo.getName}"))
     }
 
-  private def ingestDigitalObject(configDictionary: ConfigDictionary)(sdo: File): Try[(ObjectName, Pid)] =
-    for {
-      foxml <- getFOXML(sdo)
-      pid <- executeIngest(configDictionary(sdo.getName), foxml)
-      _ = log.info(s"ingested $pid $foxml")
-    } yield (sdo.getName, pid)
+  def ingestDigitalObject(configDictionary: ConfigDictionary, sdo: File): Try[(ObjectName, Pid)] = for {
+    foxmlFile <- getFOXML(sdo)
+    pid <- executeIngest(configDictionary(sdo.getName), foxmlFile)
+  } yield (sdo.getName, pid)
 
   private def executeIngest(cfg: DOConfig, foxml: File): Try[Pid] = Try {
     val pid = getNextPID.namespace(cfg.namespace).execute().getPid
@@ -136,10 +163,8 @@ object EasyIngest {
       .execute()
       .getPid
   }.recoverWith {
-    // a stack trace for each file (with for example an invalid SHA-1) only clutters the logging
-    // anyway we want to add the file name to the message
     case e: FedoraClientException =>
-      // the HTTP 500 Error wraps the full stack trace in the message without using the cause
+      // the full fedora stack trace is in the message, it only clutters the logging
       Failure(new Exception(s"ingest failed $foxml : ${e.getMessage.replaceAll("\n.*","")}"))
     case e => Failure(new Exception(s"$foxml : ${e.getMessage}"))
   }
@@ -209,17 +234,15 @@ object EasyIngest {
       case None => Failure(new RuntimeException(s"Couldn't find $FOXML_FILENAME in digital object: ${sdo.getName}"))
     }
 
-  private def verifyIntegrity[T](results: Seq[Try[T]]): Unit =
-    if (results.exists(_.isFailure)) {
-      results.collect { case Failure(e) => e }.foreach(e => log.error(e.getMessage, e)) // handle errors & rollback?
-      System.exit(13)
-    }
+  class CompositeException(throwables: List[Throwable])
+    extends RuntimeException(throwables.foldLeft("")(
+        (msg, t) => s"$msg\n${getMessage(t)} ${getStackTrace(t)}"
+    ))
 
-  private class CompositeException(throwables: List[Throwable], includeStackTraces: Boolean = false) extends RuntimeException(throwables.foldLeft("")((msg, t) => s"$msg\n${getMessage(t)}${if(includeStackTraces) getStackTrace(t) else ""}"))
   private implicit class ListTryExtensions[T](xs: List[Try[T]]) {
-    def collectResults(includeStackTraces: Boolean = false): Try[List[T]] =
+    def collectResults(): Try[List[T]] =
       if (xs.exists(_.isFailure))
-        Failure(new CompositeException(xs.collect { case Failure(e) => e }, includeStackTraces))
+        Failure(new CompositeException(xs.collect { case Failure(e) => e }))
       else
         Success(xs.map(_.get))
   }
