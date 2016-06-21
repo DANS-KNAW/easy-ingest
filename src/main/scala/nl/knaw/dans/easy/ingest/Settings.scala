@@ -18,15 +18,22 @@ package nl.knaw.dans.easy.ingest
 import java.io.File
 
 import com.yourmediashelf.fedora.client.FedoraCredentials
+import nl.knaw.dans.easy.ingest.Settings.AdministrativeMetadata
+import nl.knaw.dans.pf.language.emd.EasyMetadata
+
+import scala.xml.Elem
 
 object Settings{
+  type AdministrativeMetadata = Elem
   def apply(conf: Conf): Settings =
     new Settings(
-      new FedoraCredentials(conf.fedoraUrl(), conf.username(), conf.password()),
-      new File(conf.sdo()),
-      conf.init())
+      fedoraCredentials = new FedoraCredentials(conf.fedoraUrl(), conf.username(), conf.password()),
+      sdo = new File(conf.sdo()),
+      init = conf.init())
 }
 
-case class Settings(fedoraCredentials: FedoraCredentials,
+case class Settings(emd: Option[EasyMetadata] = None,
+                    amd: Option[AdministrativeMetadata] = None,
+                    fedoraCredentials: FedoraCredentials,
                     sdo: File,
                     init: Boolean = false)
