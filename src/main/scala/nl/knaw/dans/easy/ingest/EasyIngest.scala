@@ -39,6 +39,7 @@ object EasyIngest {
 
   private val CONFIG_FILENAME = "cfg.json"
   private val FOXML_FILENAME = "fo.xml"
+  private val PLACEHOLDER_FOR_DMO_ID = "$sdo-id"
 
   private type ObjectName = String
   private type Pid = String
@@ -198,7 +199,7 @@ object EasyIngest {
       request = (datastreamId, sdo.listFiles.find(_.getName == dsSpec.contentFile)) match {
         case ("EMD", Some(file)) =>
           // Note that this would change the ingested file's checksum, but it is only for the EMD datastream, which has no checksum
-          return executeAddRequestWithReplacement(request, file, "$sdo-id", pidDictionary(sdo.getName))
+          return executeAddRequestWithReplacement(request, file, PLACEHOLDER_FOR_DMO_ID, pidDictionary(sdo.getName))
         case (_, Some(file)) => request.content(file)
         case (_, None) => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
       }
@@ -223,7 +224,7 @@ object EasyIngest {
     val srcContent = FileUtils.readFileToString(src)
     if (!srcContent.contains(placeholder))
       throw new RuntimeException(s"Missing placeholder '$placeholder' in file: ${src.getAbsolutePath}")
-    val transformedContent = srcContent.replaceAll(placeholder, replacement)
+    val transformedContent = srcContent.replace(placeholder, replacement)
     FileUtils.writeStringToFile(dst, transformedContent)
     log.debug(s"Replaced placeholder '$placeholder' with '$replacement' while copying from file '${src.getAbsolutePath}', to file '${dst.getAbsolutePath}'")
   }
