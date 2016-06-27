@@ -208,7 +208,7 @@ object EasyIngest {
     request.execute().getLocation
   }
 
-  private def replacePlaceHolder(file: File, placeholder: String, replacement:String): ByteArrayInputStream = {
+  private def replacePlaceHolder(file: File, placeholder: String, replacement:String): InputStream = {
     // these files are assumed to be small enough to be read into memory without problems
     val originalContent = FileUtils.readFileToString(file, "UTF-8")
     require(originalContent.contains(placeholder), s"Missing placeholder '$placeholder' in file: ${file.getAbsolutePath}")
