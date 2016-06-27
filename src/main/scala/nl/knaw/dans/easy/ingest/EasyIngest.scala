@@ -189,23 +189,22 @@ object EasyIngest {
     }
 
     log.debug(s"Adding datastream with dsId = $datastreamId")
-    val request = addDatastream(pid, datastreamId).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
+    var request = addDatastream(pid, datastreamId).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
 
     if (dsSpec.checksumType.nonEmpty && dsSpec.checksum.nonEmpty)
-      request.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
+      request = request.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
 
-    if (dsSpec.dsLocation.nonEmpty) {
-      request.dsLocation(dsSpec.dsLocation)
-    } else if (dsSpec.contentFile.nonEmpty) {
-      (datastreamId, sdo.listFiles.find(_.getName == dsSpec.contentFile)) match {
+    (
+      if (dsSpec.dsLocation.nonEmpty) request.dsLocation(dsSpec.dsLocation)
+      else if (dsSpec.contentFile.isEmpty) request
+      else (datastreamId, sdo.listFiles.find(_.getName == dsSpec.contentFile)) match {
         case ("EMD", Some(file)) =>
           // Note that this would change the ingested file's checksum, but it is only for the EMD datastream, which has no checksum
           managed(replacePlaceHolder(file, PLACEHOLDER_FOR_DMO_ID, pid)).acquireAndGet(request.content)
         case (_, Some(file)) => request.content(file)
         case (_, None) => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
       }
-    }
-    request.execute().getLocation
+    ).execute().getLocation
   }
 
   private def replacePlaceHolder(file: File, placeholder: String, replacement:String): InputStream = {
