@@ -18,15 +18,16 @@ package nl.knaw.dans.easy.ingest
 import java.io._
 import java.net.URI
 
-import com.yourmediashelf.fedora.client.{FedoraClient, FedoraClientException}
 import com.yourmediashelf.fedora.client.FedoraClient._
-import com.yourmediashelf.fedora.client.request.{AddDatastream, FedoraRequest}
+import com.yourmediashelf.fedora.client.request.FedoraRequest
+import com.yourmediashelf.fedora.client.{FedoraClient, FedoraClientException}
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.exception.ExceptionUtils._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
+import resource._
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
@@ -199,7 +200,8 @@ object EasyIngest {
       request = (datastreamId, sdo.listFiles.find(_.getName == dsSpec.contentFile)) match {
         case ("EMD", Some(file)) =>
           // Note that this would change the ingested file's checksum, but it is only for the EMD datastream, which has no checksum
-          request.content(replacePlaceHolder(file, PLACEHOLDER_FOR_DMO_ID, pidDictionary(sdo.getName)))
+          managed(replacePlaceHolder(file, PLACEHOLDER_FOR_DMO_ID, pidDictionary(sdo.getName)))
+            .acquireAndGet(request.content)
         case (_, Some(file)) => request.content(file)
         case (_, None) => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
       }
@@ -207,7 +209,7 @@ object EasyIngest {
     request.execute().getLocation
   }
 
-  private def replacePlaceHolder(file: File, placeholder: String, replacement:String): InputStream = {
+  private def replacePlaceHolder(file: File, placeholder: String, replacement:String): ByteArrayInputStream = {
     // these files are assumed to be small enough to be read into memory without problems
     val originalContent = FileUtils.readFileToString(file, "UTF-8")
     require(originalContent.contains(placeholder), s"Missing placeholder '$placeholder' in file: ${file.getAbsolutePath}")
