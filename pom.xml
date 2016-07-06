@@ -21,7 +21,7 @@
     <parent>
        <groupId>nl.knaw.dans.shared</groupId>
        <artifactId>dans-scala-prototype</artifactId>
-       <version>1.27</version>
+       <version>1.28</version>
     </parent>
     <groupId>nl.knaw.dans.easy</groupId>
     <artifactId>easy-ingest</artifactId>
@@ -69,6 +69,10 @@
         <dependency>
             <groupId>commons-lang</groupId>
             <artifactId>commons-lang</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.jsuereth</groupId>
+            <artifactId>scala-arm_2.11</artifactId>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>

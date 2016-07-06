@@ -18,15 +18,16 @@ package nl.knaw.dans.easy.ingest
 import java.io._
 import java.net.URI
 
-import com.yourmediashelf.fedora.client.{FedoraClient, FedoraClientException}
 import com.yourmediashelf.fedora.client.FedoraClient._
-import com.yourmediashelf.fedora.client.request.{AddDatastream, FedoraRequest}
+import com.yourmediashelf.fedora.client.request.FedoraRequest
+import com.yourmediashelf.fedora.client.{FedoraClient, FedoraClientException}
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.exception.ExceptionUtils._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
+import resource._
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
@@ -127,7 +128,7 @@ object EasyIngest {
       sdo <- sdos
       _ = log.debug(s"Adding datastreams for $sdo")
       dsSpec <- configDictionary(sdo.getName).datastreams
-    } yield addDataStream(sdo, dsSpec, pidDictionary)).collectResults().recoverWith{
+    } yield addDataStream(sdo, dsSpec, pidDictionary(sdo.getName))).collectResults().recoverWith{
       case e =>
         partialFailure(pidDictionary, s"but failed to add datastream(s) ${e.getMessage}", e)
     }
@@ -179,32 +180,31 @@ object EasyIngest {
 
   private def pidToUri(pid: String): String = s"info:fedora/$pid"
 
-  private def addDataStream(sdo: File, dsSpec: DatastreamSpec, pidDictionary: PidDictionary): Try[URI] = Try {
+  private def addDataStream(sdo: File, dsSpec: DatastreamSpec, pid: Pid): Try[URI] = Try {
     log.debug(s"Getting datastreamId from spec: $dsSpec")
-    val datastreamId = (dsSpec.dsID, dsSpec.contentFile, dsSpec.dsLocation) match {
-      case (id, _, _) if id != "" => id
-      case ("", file, _) if file != "" => file
+    val datastreamId = (dsSpec.dsID, dsSpec.contentFile) match {
+      case (id, _) if id.nonEmpty => id
+      case ("", file) if file.nonEmpty => file
       case _ => throw new RuntimeException(s"Invalid datastream specification provided in ${sdo.getName}")
     }
 
     log.debug(s"Adding datastream with dsId = $datastreamId")
-    var request = addDatastream(pidDictionary(sdo.getName), datastreamId).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
+    var request = addDatastream(pid, datastreamId).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
 
-    if (dsSpec.checksumType != "" && dsSpec.checksum != "")
+    if (dsSpec.checksumType.nonEmpty && dsSpec.checksum.nonEmpty)
       request = request.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
 
-    if (dsSpec.dsLocation != "") {
-      request = request.dsLocation(dsSpec.dsLocation)
-    } else if (dsSpec.contentFile != "") {
-      request = (datastreamId, sdo.listFiles.find(_.getName == dsSpec.contentFile)) match {
+    (
+      if (dsSpec.dsLocation.nonEmpty) request.dsLocation(dsSpec.dsLocation)
+      else if (dsSpec.contentFile.isEmpty) request
+      else (datastreamId, sdo.listFiles.find(_.getName == dsSpec.contentFile)) match {
         case ("EMD", Some(file)) =>
           // Note that this would change the ingested file's checksum, but it is only for the EMD datastream, which has no checksum
-          request.content(replacePlaceHolder(file, PLACEHOLDER_FOR_DMO_ID, pidDictionary(sdo.getName)))
+          managed(replacePlaceHolder(file, PLACEHOLDER_FOR_DMO_ID, pid)).acquireAndGet(request.content)
         case (_, Some(file)) => request.content(file)
         case (_, None) => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
       }
-    }
-    request.execute().getLocation
+    ).execute().getLocation
   }
 
   private def replacePlaceHolder(file: File, placeholder: String, replacement:String): InputStream = {
