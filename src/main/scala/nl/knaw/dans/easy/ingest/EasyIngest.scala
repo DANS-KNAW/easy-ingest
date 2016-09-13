@@ -21,9 +21,9 @@ import java.net.URI
 import com.yourmediashelf.fedora.client.FedoraClient._
 import com.yourmediashelf.fedora.client.request.FedoraRequest
 import com.yourmediashelf.fedora.client.{FedoraClient, FedoraClientException}
+import nl.knaw.dans.lib.error._
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.io.FileUtils
-import org.apache.commons.lang.exception.ExceptionUtils._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
@@ -93,7 +93,7 @@ object EasyIngest {
 
   private def buildConfigDictionary(implicit sdos: List[File]): Try[ConfigDictionary] = {
     log.info(">>> PHASE 0: BUILD CONFIG DICTIONARY")
-    sdos.map(d => readDOConfig(d).map(cfg => (d.getName, cfg))).collectResults().map(_.toMap)
+    sdos.map(d => readDOConfig(d).map(cfg => (d.getName, cfg))).collectResults.map(_.toMap)
   }
 
   private def ingestDigitalObjects(configDictionary: ConfigDictionary)(implicit sdos: List[File]): Try[PidDictionary] = {
@@ -128,7 +128,7 @@ object EasyIngest {
       sdo <- sdos
       _ = log.debug(s"Adding datastreams for $sdo")
       dsSpec <- configDictionary(sdo.getName).datastreams
-    } yield addDataStream(sdo, dsSpec, pidDictionary(sdo.getName))).collectResults().recoverWith{
+    } yield addDataStream(sdo, dsSpec, pidDictionary(sdo.getName))).collectResults.recoverWith{
       case e =>
         partialFailure(pidDictionary, s"but failed to add datastream(s) ${e.getMessage}", e)
     }
@@ -141,7 +141,7 @@ object EasyIngest {
       log.debug(s"Adding relations for sdo $sdo")
       val relations = configDictionary(sdo.getName).relations
       relations.map(addRelation(sdo.getName, pidDictionary))
-    }).collectResults().recoverWith{
+    }).collectResults.recoverWith{
       case e =>
         partialFailure(pidDictionary, s"but failed to add relation(s) ${e.getMessage}", e)
     }
@@ -219,17 +219,4 @@ object EasyIngest {
       case Some(f) => Success(f)
       case None => Failure(new RuntimeException(s"Couldn't find $FOXML_FILENAME in digital object: ${sdo.getName}"))
     }
-
-  class CompositeException(throwables: List[Throwable])
-    extends RuntimeException(throwables.foldLeft("")(
-        (msg, t) => s"$msg\n${getMessage(t)} ${getStackTrace(t)}"
-    ))
-
-  private implicit class ListTryExtensions[T](xs: List[Try[T]]) {
-    def collectResults(): Try[List[T]] =
-      if (xs.exists(_.isFailure))
-        Failure(new CompositeException(xs.collect { case Failure(e) => e }))
-      else
-        Success(xs.map(_.get))
-  }
 }
