@@ -128,7 +128,7 @@ object EasyIngest {
       sdo <- sdos
       _ = log.debug(s"Adding datastreams for $sdo")
       dsSpec <- configDictionary(sdo.getName).datastreams
-    } yield addDataStream(sdo, dsSpec, pidDictionary(sdo.getName))).collectResults.recoverWith{
+    } yield addDataStream(sdo, dsSpec, pidDictionary(sdo.getName))).collectResults.recoverWith {
       case e =>
         partialFailure(pidDictionary, s"but failed to add datastream(s) ${e.getMessage}", e)
     }
@@ -141,7 +141,7 @@ object EasyIngest {
       log.debug(s"Adding relations for sdo $sdo")
       val relations = configDictionary(sdo.getName).relations
       relations.map(addRelation(sdo.getName, pidDictionary))
-    }).collectResults.recoverWith{
+    }).collectResults.recoverWith {
       case e =>
         partialFailure(pidDictionary, s"but failed to add relation(s) ${e.getMessage}", e)
     }
