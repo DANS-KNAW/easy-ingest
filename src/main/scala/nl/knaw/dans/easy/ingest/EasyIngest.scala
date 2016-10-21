@@ -16,7 +16,7 @@
 package nl.knaw.dans.easy.ingest
 
 import java.io._
-import java.net.URI
+import java.net.{URI, URLEncoder}
 
 import com.yourmediashelf.fedora.client.FedoraClient._
 import com.yourmediashelf.fedora.client.request.FedoraRequest
@@ -195,7 +195,7 @@ object EasyIngest {
       request = request.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
 
     (
-      if (dsSpec.dsLocation.nonEmpty) request.dsLocation(dsSpec.dsLocation)
+      if (dsSpec.dsLocation.nonEmpty) request.dsLocation(URLEncoder.encode(dsSpec.dsLocation, "UTF-8"))
       else if (dsSpec.contentFile.isEmpty) request
       else (datastreamId, sdo.listFiles.find(_.getName == dsSpec.contentFile)) match {
         case ("EMD", Some(file)) =>

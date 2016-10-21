@@ -21,3 +21,4 @@ out/
 /.settings
 /.classpath
 /.cache
+*.sc
