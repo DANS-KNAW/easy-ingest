@@ -189,7 +189,7 @@ object EasyIngest {
     }
 
     log.debug(s"Adding datastream with dsId = $datastreamId")
-    var request = addDatastream(pid, datastreamId).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
+    var request = addDatastream(pid, datastreamId).versionable(false).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
 
     if (dsSpec.checksumType.nonEmpty && dsSpec.checksum.nonEmpty)
       request = request.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
