@@ -119,15 +119,22 @@ A few extra properties and shortcuts are added by ``easy-ingest``:
 ARGUMENTS
 ---------
 
-* ``-u``, ``--username`` -- Fedora user to connect with
-* ``-p``, ``--password`` -- password of the Fedora user
-* ``-f``, ``--fcrepo-server`` -- URL of the Fedora Commons Repository server
-* ``-i``, ``--init`` -- initialize the directory as an SDO instead of ingesting it
-* ``<staged-digital-object>...`` -- one or more [SDOs] to be ingested
-* ``<staged-digital-object-set>`` -- an [SDO-set] to be ingested
+     -f, --fcrepo-server  <arg>   URL of the Fedora Commons Repository Server
+                                  (default = http://localhost:8080/fedora)
+     -i, --init                   Initialize template SDO instead of ingesting
+     -p, --password  <arg>        Password to use for authentication/authorisation to the Fedora Commons
+                                  Repository Server (default = fedoraAdmin)
+     -u, --username  <arg>        Username to use for authentication/authorisation to the Fedora Commons
+                                  Repository Server (default = fedoraAdmin)
+         --help                   Show help message
+         --version                Show version of this program
+
+    trailing arguments:
+     <staged-digital-object-(set)> (required)   Either a single Staged Digital Object or a set of SDO's
 
 ``easy-ingest`` will recognize a directory as an SDO by checking for the ``fo.xml``. If it is absent, it will assume that
 the directory is an SDO-set.
+
 
 INSTALLATION AND CONFIGURATION
 ------------------------------
