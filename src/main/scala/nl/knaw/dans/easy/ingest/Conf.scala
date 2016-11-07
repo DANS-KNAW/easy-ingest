@@ -21,6 +21,7 @@ import org.apache.commons.configuration.PropertiesConfiguration
 import org.rogach.scallop.ScallopConf
 
 class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopConf(args) {
+
   appendDefaultToDescription = true
   editBuilder(_.setHelpWidth(110))
 
@@ -37,6 +38,7 @@ class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopCon
                 |
                 |Options:
                 |""".stripMargin)
+
   private val s = " provided, please check {{app.home}}/cfg/application.properties"
   val fedoraUrl = opt[URL](name = "fcrepo-server",
     descr = "URL of the Fedora Commons Repository Server",
@@ -65,5 +67,6 @@ class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopCon
     name = "<staged-digital-object-(set)>",
     descr = "Either a single Staged Digital Object or a set of SDO's",
     required = true)
+
   verify()
 } 
