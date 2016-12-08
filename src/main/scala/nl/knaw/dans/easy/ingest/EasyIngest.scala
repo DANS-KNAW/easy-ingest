@@ -211,7 +211,7 @@ object EasyIngest {
     // these files are assumed to be small enough to be read into memory without problems
     val originalContent = FileUtils.readFileToString(file, "UTF-8")
     require(originalContent.contains(placeholder), s"Missing placeholder '$placeholder' in file: ${file.getAbsolutePath}")
-    new ByteArrayInputStream(originalContent.replace(placeholder, replacement).getBytes)
+    new ByteArrayInputStream(originalContent.replace(placeholder, replacement).getBytes("UTF-8"))
   }
 
   private def getFOXML(sdo: File): Try[File] =
