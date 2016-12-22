@@ -21,41 +21,59 @@ import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.io.FileUtils
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.collection.JavaConverters._
+
 class ConfSpec extends FlatSpec with Matchers {
 
+  /** The defaults as in the README */
+  val props: PropertiesConfiguration = {
+    val fileContent =
+      """default.fcrepo-server=http://localhost:8080/fedora
+        |default.username=fedoraAdmin
+        |default.password=fedoraAdmin
+        | """.stripMargin
+    val tmpFile = new File("target/test/application.properties")
+    FileUtils.write(tmpFile, fileContent)
+    new PropertiesConfiguration(tmpFile)
+  }
 
-  val helpInfo = {
-    val propsFile = new File("target/test/application.properties")
-    FileUtils.write(propsFile, "default.fcrepo-server=http://deasy.dans.knaw.nl:8080/fedora\n" +
-      "default.user=u\n" +
-      "default.password=p")
-    val props = new PropertiesConfiguration(propsFile)
-    propsFile.delete()
+  private val clo = {
+    new Conf(Array[String](), props) {
+      // avoids System.exit() in case of invalid arguments or "--help"
+      override def verify(): Unit = {}
+    }
+  }
 
+  private val helpInfo = {
     val mockedStdOut = new ByteArrayOutputStream()
     Console.withOut(mockedStdOut) {
-      new Conf("args".split(" "), props).printHelp()
+      clo.printHelp()
     }
     mockedStdOut.toString
   }
 
-  /* check for options in help info is spoilt by links in readme
-   * and defaults from {{app.home}}/cfg/application.properties
-   * requiring a semantically valid fedora URL
-   */
-  ignore should "be part of README.md" in {
-    val options = helpInfo.replaceAll("\\(default[^)]+\\)","").split("Options:")(1)
+  "options in help info" should "be part of README.md" in {
+    val lineSeparators = s"(${System.lineSeparator()})+"
+    val options = helpInfo.split(s"${lineSeparators}Options:$lineSeparators")(1)
+    options.trim.length shouldNot be (0)
     new File("README.md") should containTrimmed(options)
   }
 
   "synopsis in help info" should "be part of README.md" in {
-    val synopsis = helpInfo.split("Options:")(0).split("Usage:")(1)
-    new File("README.md") should containTrimmed(synopsis)
+    new File("README.md") should containTrimmed(clo.synopsis)
   }
 
-  "first banner line" should "be part of README.md and pom.xml" in {
-    val description = helpInfo.split("\n")(1)
+  "description line(s) in help info" should "be part of README.md and pom.xml" in {
+    val description = clo.description
     new File("README.md") should containTrimmed(description)
     new File("pom.xml") should containTrimmed(description)
+  }
+
+  "distributed default properties" should "be valid options" in {
+    val optKeys = clo.builder.opts.map(opt => opt.name).toArray
+    val propKeys = new PropertiesConfiguration("src/main/assembly/dist/cfg/application.properties")
+      .getKeys.asScala.withFilter(key => key.startsWith("default.") )
+
+    propKeys.foreach(key => optKeys should contain (key.replace("default.","")) )
   }
 }
