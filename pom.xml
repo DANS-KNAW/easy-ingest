@@ -26,6 +26,7 @@
     <groupId>nl.knaw.dans.easy</groupId>
     <artifactId>easy-ingest</artifactId>
     <name>EASY Ingest</name>
+    <description>Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository.</description>
     <version>1.x-SNAPSHOT</version>
     <inceptionYear>2015-2016</inceptionYear>
     <properties>

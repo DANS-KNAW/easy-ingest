@@ -27,14 +27,19 @@ class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopCon
 
   printedName = "easy-ingest"
   val indent_____ = printedName.replaceAll(".", " ")
+
+  val description = """Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository."""
+  val synopsis =
+    s"""  $printedName [-u <user> -p <password>] [-f <fcrepo-server>] [-i] \\
+       |  $indent_____ [<staged-digital-object>... | <staged-digital-object-set>]""".stripMargin
+
   version(s"$printedName v${Version()}")
   banner(s"""
-                |Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository.
+                |  $description
                 |
                 |Usage:
                 |
-                | $printedName [-u <user> -p <password>] [-f <fcrepo-server>] [-i] \\
-                | $indent_____ [<staged-digital-object>... | <staged-digital-object-set>]
+                |$synopsis
                 |
                 |Options:
                 |""".stripMargin)
@@ -44,20 +49,19 @@ class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopCon
     descr = "URL of the Fedora Commons Repository Server",
     default = props.getString("default.fcrepo-server") match {
       case s: String => Some(new URL(s))
-      case _ =>
-        throw new RuntimeException("No valid default Fedora Commons URL" + s)
+      case _ => Some(new URL("http://localhost:8080/fedora"))
     })
   val username = opt[String]("username",
     descr = "Username to use for authentication/authorisation to the Fedora Commons Repository Server",
-    default = props.getString("default.user") match {
+    default = props.getString("default.username") match {
       case s: String => Some(s)
-      case _ => throw new RuntimeException("No default username" + s)
+      case _ => Some("fedoraAdmin")
     })
   val password = opt[String]("password",
     descr = "Password to use for authentication/authorisation to the Fedora Commons Repository Server",
     default = props.getString("default.password") match {
       case s: String => Some(s)
-      case _ => throw new RuntimeException("No default password" + s)
+      case _ => Some("fedoraAdmin")
     })
   val init = opt[Boolean](name = "init",
     descr = "Initialize template SDO instead of ingesting",

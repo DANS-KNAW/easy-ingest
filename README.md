@@ -2,7 +2,7 @@ easy-ingest
 ===========
 [![Build Status](https://travis-ci.org/DANS-KNAW/easy-ingest.png?branch=master)](https://travis-ci.org/DANS-KNAW/easy-ingest)
 
-Ingest staged digital objects in a Fedora Commons 3.x repository.
+Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository.
 
 
 SYNOPSIS
