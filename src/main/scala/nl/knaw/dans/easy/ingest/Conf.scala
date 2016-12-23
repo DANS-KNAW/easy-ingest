@@ -49,20 +49,19 @@ class Conf(args: Seq[String], props: PropertiesConfiguration) extends ScallopCon
     descr = "URL of the Fedora Commons Repository Server",
     default = props.getString("default.fcrepo-server") match {
       case s: String => Some(new URL(s))
-      case _ =>
-        throw new RuntimeException("No valid default Fedora Commons URL" + synopsis)
+      case _ => Some(new URL("http://localhost:8080/fedora"))
     })
   val username = opt[String]("username",
     descr = "Username to use for authentication/authorisation to the Fedora Commons Repository Server",
     default = props.getString("default.username") match {
       case s: String => Some(s)
-      case _ => throw new RuntimeException("No default username" + synopsis)
+      case _ => Some("fedoraAdmin")
     })
   val password = opt[String]("password",
     descr = "Password to use for authentication/authorisation to the Fedora Commons Repository Server",
     default = props.getString("default.password") match {
       case s: String => Some(s)
-      case _ => throw new RuntimeException("No default password" + synopsis)
+      case _ => Some("fedoraAdmin")
     })
   val init = opt[Boolean](name = "init",
     descr = "Initialize template SDO instead of ingesting",
