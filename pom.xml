@@ -27,14 +27,14 @@
     <artifactId>easy-ingest</artifactId>
     <name>EASY Ingest</name>
     <description>Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository.</description>
-    <version>1.x-SNAPSHOT</version>
+    <version>1.4-RC-1</version>
     <inceptionYear>2015-2016</inceptionYear>
     <properties>
         <main-class>nl.knaw.dans.easy.ingest.EasyIngest</main-class>
     </properties>
     <scm>
         <developerConnection>scm:git:https://github.com/DANS-KNAW/${project.artifactId}</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v1.4-RC-1</tag>
     </scm>
     <dependencies>
         <dependency>
