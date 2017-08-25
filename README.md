@@ -8,8 +8,7 @@ Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository.
 SYNOPSIS
 --------
 
-    easy-ingest [-u <user> -p <password>] [-f <fcrepo-server>] [-i] \
-        [<staged-digital-object>... | <staged-digital-object-set>]
+    easy-ingest [-i] [<staged-digital-object> | <staged-digital-object-set>]
 
 
 DESCRIPTION
@@ -119,15 +118,9 @@ A few extra properties and shortcuts are added by ``easy-ingest``:
 ARGUMENTS
 ---------
 
-     -f, --fcrepo-server  <arg>   URL of the Fedora Commons Repository Server
-                                  (default = http://localhost:8080/fedora)
-     -i, --init                   Initialize template SDO instead of ingesting
-     -p, --password  <arg>        Password to use for authentication/authorisation to the Fedora Commons
-                                  Repository Server (default = fedoraAdmin)
-     -u, --username  <arg>        Username to use for authentication/authorisation to the Fedora Commons
-                                  Repository Server (default = fedoraAdmin)
-         --help                   Show help message
-         --version                Show version of this program
+     -i, --init      Initialize template SDO instead of ingesting
+         --help      Show help message
+         --version   Show version of this program
 
     trailing arguments:
      <staged-digital-object-(set)> (required)   Either a single Staged Digital Object or a set of SDO's

@@ -16,207 +16,216 @@
 package nl.knaw.dans.easy.ingest
 
 import java.io._
-import java.net.{URI, URLEncoder}
+import java.net.{ URI, URLEncoder }
 
-import com.yourmediashelf.fedora.client.FedoraClient._
-import com.yourmediashelf.fedora.client.request.FedoraRequest
-import com.yourmediashelf.fedora.client.{FedoraClient, FedoraClientException}
+import com.yourmediashelf.fedora.client.{ FedoraClient, FedoraClientException }
 import nl.knaw.dans.lib.error._
-import org.apache.commons.configuration.PropertiesConfiguration
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.io.FileUtils
 import org.json4s._
 import org.json4s.native.JsonMethods._
-import org.slf4j.LoggerFactory
 import resource._
 
 import scala.annotation.tailrec
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
-object EasyIngest {
-  private val log = LoggerFactory.getLogger(getClass)
-  private val home = new File(System.getProperty("app.home"))
-  val props = new PropertiesConfiguration(new File(home, "cfg/application.properties"))
-  private implicit val formats = DefaultFormats
-
-  private val CONFIG_FILENAME = "cfg.json"
-  private val FOXML_FILENAME = "fo.xml"
-  private val PLACEHOLDER_FOR_DMO_ID = "$sdo-id"
-
-  private type ObjectName = String
-  private type Pid = String
-  private type Predicate = String
-  private type ConfigDictionary = Map[ObjectName, DOConfig]
-  type PidDictionary = Map[ObjectName, Pid]
-  def PidDictionary() = Map[ObjectName, Pid]()
-
-  private case class DatastreamSpec(contentFile: String = "", dsLocation: String = "", dsID: String = "", mimeType: String = "application/octet-stream", controlGroup: String = "M", checksumType: String = "", checksum: String = "")
-  private case class Relation(predicate: Predicate, objectSDO: ObjectName = "", `object`: Pid = "", isLiteral: Boolean = false)
-  private case class DOConfig(namespace: String, datastreams: List[DatastreamSpec], relations: List[Relation])
-
-  def main(args: Array[String]) {
-    implicit val s: Settings = Settings(new Conf(args, props))
-    run.doOnError(e => log.error("Ingest failed",e))
-      .doOnSuccess(dict => log.info(s"ingested: ${dict.values.mkString(", ")}"))
-  }
+object EasyIngest extends DebugEnhancedLogging {
 
   def run(implicit s: Settings): Try[PidDictionary] = {
-    val sdo = s.sdo
-    if(s.init) initSdo(sdo).map(_ => Map())
-    else {
-      FedoraRequest.setDefaultClient(new FedoraClient(s.fedoraCredentials))
-      implicit val sdos = if (isSdo(sdo)) List[File](sdo)
-                          else sdo.listFiles().filter(_.isDirectory).toList
-      ingestStagedDigitalObjects
-    }
+    val result = if (s.init) initOnly _ else ingest _
+
+    result(s.sdo)
+      .doIfSuccess(dict => logger.info(s"ingested: ${ dict.values.mkString(", ") }"))
+      .doIfFailure { case e => logger.error(s"ingest failed: ${ e.getMessage }", e) }
   }
 
-  private def initSdo(dir: File): Try[Unit] = Try {
-    if(!dir.exists && !dir.mkdirs()) throw new RuntimeException(s"$dir does not exist and cannot be created")
-    if(dir.isFile) throw new RuntimeException(s"Cannot create SDO. $dir is a file. It must either not exist or be a directory")
-    log.info(s"Creating $FOXML_FILENAME and $CONFIG_FILENAME from templates ...")
-    FileUtils.copyFile(new File(home, "cfg/fo-template.xml"), new File(dir, "fo.xml"))
-    FileUtils.copyFile(new File(home, "cfg/cfg-template.json"), new File(dir, "cfg.json"))
+  private def initOnly(sdo: File)(implicit settings: Settings): Try[PidDictionary] = {
+    initSdo(sdo).map(_ => Map.empty)
+  }
+
+  private def ingest(sdo: File)(implicit settings: Settings): Try[PidDictionary] = {
+    val sdos = if (isSdo(sdo)) List[File](sdo)
+               else sdo.listFiles().filter(_.isDirectory).toList
+    ingestStagedDigitalObjects(sdos)(new FedoraClient(settings.fedoraCredentials))
+  }
+
+  private def initSdo(dir: File)(implicit settings: Settings): Try[Unit] = {
+    if (!dir.exists && !dir.mkdirs())
+      Failure(new RuntimeException(s"$dir does not exist and cannot be created"))
+    else if (dir.isFile) {
+      Failure(new RuntimeException(s"Cannot create SDO. $dir is a file. It must either not exist or be a directory"))
+    }
+    else Try {
+      logger.info(s"Creating $FOXML_FILENAME and $CONFIG_FILENAME from templates ...")
+
+      FileUtils.copyFile(settings.foTemplate, new File(dir, "fo.xml"))
+      FileUtils.copyFile(settings.cfgTemplate, new File(dir, "cfg.json"))
+    }
   }
 
   private def isSdo(f: File): Boolean = f.isDirectory && f.list.contains(FOXML_FILENAME)
 
-  private def ingestStagedDigitalObjects(implicit sdos: List[File]): Try[PidDictionary] =
+  private def ingestStagedDigitalObjects(sdos: List[File])(implicit fedora: FedoraClient): Try[PidDictionary] = {
     for {
-      configDictionary <- buildConfigDictionary
-      pidDictionary <- ingestDigitalObjects(configDictionary)
-      _ = pidDictionary.foreach(r => log.info(s"Created digital object: $r"))
-      datastreams <- addDatastreams(configDictionary, pidDictionary)
-      _ = datastreams.foreach(r => log.debug(s"Added datastream: $r"))
-      relations <- addRelations(configDictionary, pidDictionary)
-      _ = relations.foreach(r => log.debug(s"Added relation: $r"))
+      configDictionary <- buildConfigDictionary(sdos)
+      pidDictionary <- ingestDigitalObjects(configDictionary, sdos)
+      _ = pidDictionary.foreach(r => logger.info(s"Created digital object: $r"))
+      datastreams <- addDatastreams(configDictionary, pidDictionary, sdos)
+      _ = datastreams.foreach(r => debug(s"Added datastream: $r"))
+      relations <- addRelations(configDictionary, pidDictionary, sdos)
+      _ = relations.foreach(r => debug(s"Added relation: $r"))
     } yield pidDictionary
+  }
 
-  private def buildConfigDictionary(implicit sdos: List[File]): Try[ConfigDictionary] = {
-    log.info(">>> PHASE 0: BUILD CONFIG DICTIONARY")
+  private def buildConfigDictionary(sdos: List[File]): Try[ConfigDictionary] = {
+    logger.info(">>> PHASE 0: BUILD CONFIG DICTIONARY")
     sdos.map(d => readDOConfig(d).map(cfg => (d.getName, cfg))).collectResults.map(_.toMap)
   }
 
-  private def ingestDigitalObjects(configDictionary: ConfigDictionary)(implicit sdos: List[File]): Try[PidDictionary] = {
-
+  private def ingestDigitalObjects(configDictionary: ConfigDictionary, sdos: List[File])(implicit fedora: FedoraClient): Try[PidDictionary] = {
     // the full message is repeated in the cause
     // if stripping fails due to library changes we just have a less crisp top level message
     def stripMessage(e: Throwable): String = e.getMessage.replaceAll(".*Checksum Mismatch:", "Checksum Mismatch:")
 
     @tailrec
-    def failFastLoop (sdos: List[File], ingested: PidDictionary = PidDictionary()): Try[PidDictionary] = {
-      if (sdos.isEmpty)
-        Success(ingested)
-      else (ingestDigitalObject(configDictionary, sdos.head), ingested.isEmpty) match {
-        case (Failure(e),true) =>
-          Failure (new Exception (s"Failed to ingest ${sdos.head} : ${stripMessage(e)}", e))
-        case (Failure(e),false) =>
-          partialFailure(ingested, s"but then failed to ingest ${sdos.head} : ${stripMessage(e)}", e)
-        case (Success(t),_) =>
-          failFastLoop(sdos.tail, ingested ++ List(t))
+    def failFastLoop(sdos: List[File], ingested: PidDictionary = Map.empty): Try[PidDictionary] = {
+      sdos match {
+        case Nil => Success(ingested)
+        case sdo :: tail =>
+          ingestDigitalObject(configDictionary, sdo) match {
+            case Success(t) => failFastLoop(tail, ingested ++ List(t))
+            case Failure(e) if ingested.isEmpty =>
+              Failure(new Exception(s"Failed to ingest $sdo: ${ stripMessage(e) }", e))
+            case Failure(e) =>
+              partialFailure(ingested, s"but then failed to ingest $sdo: ${ stripMessage(e) }", e)
+          }
       }
     }
-    log.info(">>> PHASE 1: INGEST DIGITAL OBJECTS")
+
+    logger.info(">>> PHASE 1: INGEST DIGITAL OBJECTS")
     failFastLoop(sdos)
   }
 
   private def partialFailure(pidDictionary: PidDictionary, s: String, e: Throwable): Failure[Nothing] =
-    Failure(new Exception(s"ingested: ${pidDictionary.values.mkString(", ")}\n$s\n", e))
+    Failure(new Exception(s"ingested: ${ pidDictionary.values.mkString(", ") }\n$s\n", e))
 
-  private def addDatastreams(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit sdos: List[File]): Try[List[URI]] = {
-    log.info(">>> PHASE 2: ADD DATASTREAMS")
+  private def addDatastreams(configDictionary: ConfigDictionary, pidDictionary: PidDictionary, sdos: List[File])(implicit fedora: FedoraClient): Try[List[URI]] = {
+    logger.info(">>> PHASE 2: ADD DATASTREAMS")
     (for {
       sdo <- sdos
-      _ = log.debug(s"Adding datastreams for $sdo")
+      _ = logger.debug(s"Adding datastreams for $sdo")
       dsSpec <- configDictionary(sdo.getName).datastreams
     } yield addDataStream(sdo, dsSpec, pidDictionary(sdo.getName))).collectResults.recoverWith {
       case e =>
-        partialFailure(pidDictionary, s"but failed to add datastream(s) ${e.getMessage}", e)
+        partialFailure(pidDictionary, s"but failed to add datastream(s) ${ e.getMessage }", e)
     }
   }
 
-  private def addRelations(configDictionary: ConfigDictionary, pidDictionary: PidDictionary)(implicit sdos: List[File]): Try[List[(Pid, String, Pid)]] = {
-    log.info(">>> PHASE 3: ADD RELATIONS")
-    log.debug(s"configDictionary = $configDictionary")
+  private def addRelations(configDictionary: ConfigDictionary, pidDictionary: PidDictionary, sdos: List[File])(implicit fedora: FedoraClient): Try[List[(Pid, String, Pid)]] = {
+    logger.info(">>> PHASE 3: ADD RELATIONS")
+    logger.debug(s"configDictionary = $configDictionary")
     sdos.flatMap(sdo => {
-      log.debug(s"Adding relations for sdo $sdo")
-      val relations = configDictionary(sdo.getName).relations
-      relations.map(addRelation(sdo.getName, pidDictionary))
-    }).collectResults.recoverWith {
-      case e =>
-        partialFailure(pidDictionary, s"but failed to add relation(s) ${e.getMessage}", e)
-    }
+      logger.debug(s"Adding relations for sdo $sdo")
+      configDictionary(sdo.getName)
+        .relations
+        .map(addRelation(sdo.getName, pidDictionary))
+    })
+      .collectResults
+      .recoverWith {
+        case e => partialFailure(pidDictionary, s"but failed to add relation(s) ${ e.getMessage }", e)
+      }
   }
 
-  private def readDOConfig(sdo: File): Try[DOConfig] =
-    sdo.listFiles.find(_.getName == CONFIG_FILENAME) match {
-      case Some(cfgFile) => Success(parse(cfgFile).extract[DOConfig])
-      case None => Failure(new RuntimeException(s"Couldn't find $CONFIG_FILENAME in ${sdo.getName}"))
-    }
-
-  def ingestDigitalObject(configDictionary: ConfigDictionary, sdo: File): Try[(ObjectName, Pid)] = for {
-    foxmlFile <- getFOXML(sdo)
-    pid <- executeIngest(configDictionary(sdo.getName), foxmlFile)
-  } yield (sdo.getName, pid)
-
-  private def executeIngest(cfg: DOConfig, foxml: File): Try[Pid] = Try {
-    val pid = getNextPID.namespace(cfg.namespace).execute().getPid
-    ingest(pid)
-      .content(foxml)
-      .execute()
-      .getPid
-  }.recoverWith {
-    case e: FedoraClientException =>
-      // the full fedora stack trace is in the message, it only clutters the logging
-      Failure(new Exception(s"ingest failed $foxml : ${e.getMessage.replaceAll("\n.*","")}"))
-    case e => Failure(new Exception(s"$foxml : ${e.getMessage}"))
+  private def readDOConfig(sdo: File): Try[DOConfig] = {
+    sdo.listFiles
+      .find(_.getName == CONFIG_FILENAME)
+      .map(cfgFile => Success(parse(cfgFile).extract[DOConfig]))
+      .getOrElse(Failure(new RuntimeException(s"Couldn't find $CONFIG_FILENAME in ${ sdo.getName }")))
   }
 
-  private def addRelation(subjectName: String, pidDictionary: PidDictionary)(relation: Relation): Try[(Pid, String, Pid)] = Try {
+  def ingestDigitalObject(configDictionary: ConfigDictionary, sdo: File)(implicit fedora: FedoraClient): Try[(ObjectName, Pid)] = {
+    for {
+      foxmlFile <- getFOXML(sdo)
+      pid <- executeIngest(configDictionary(sdo.getName), foxmlFile)
+    } yield (sdo.getName, pid)
+  }
+
+  private def executeIngest(cfg: DOConfig, foxml: File)(implicit fedora: FedoraClient): Try[Pid] = {
+    managed(FedoraClient.getNextPID.namespace(cfg.namespace).execute(fedora))
+      .map(_.getPid)
+      .tried
+      .flatMap(pid => managed(FedoraClient.ingest(pid).content(foxml).execute(fedora)).map(_.getPid).tried)
+      .recoverWith {
+        case e: FedoraClientException =>
+          // the full fedora stack trace is in the message, it only clutters the logging
+          Failure(new Exception(s"ingest failed $foxml : ${ e.getMessage.replaceAll("\n.*", "") }"))
+        case e => Failure(new Exception(s"$foxml : ${ e.getMessage }"))
+      }
+  }
+
+  private def addRelation(subjectName: String, pidDictionary: PidDictionary)(relation: Relation)(implicit fedora: FedoraClient): Try[(Pid, String, Pid)] = {
     val subjectPid: Pid = pidDictionary(subjectName)
-    val objectPid = if (relation.`object` != "") relation.`object` else pidToUri(pidDictionary(relation.objectSDO))
-    addRelationship(subjectPid).predicate(relation.predicate).`object`(objectPid, relation.isLiteral).execute().close()
-    (subjectPid, relation.predicate, objectPid)
+    val objectPid = if (relation.`object` != "") relation.`object`
+                    else pidToUri(pidDictionary(relation.objectSDO))
+    val request = FedoraClient.addRelationship(subjectPid)
+      .predicate(relation.predicate)
+      .`object`(objectPid, relation.isLiteral)
+
+    managed(request.execute(fedora)).map(_ => ()).tried
+      .map(_ => (subjectPid, relation.predicate, objectPid))
   }
 
   private def pidToUri(pid: String): String = s"info:fedora/$pid"
 
-  private def addDataStream(sdo: File, dsSpec: DatastreamSpec, pid: Pid): Try[URI] = Try {
-    log.debug(s"Getting datastreamId from spec: $dsSpec")
+  private def addDataStream(sdo: File, dsSpec: DatastreamSpec, pid: Pid)(implicit fedora: FedoraClient): Try[URI] = Try {
+    logger.debug(s"Getting datastreamId from spec: $dsSpec")
     val datastreamId = (dsSpec.dsID, dsSpec.contentFile) match {
       case (id, _) if id.nonEmpty => id
       case ("", file) if file.nonEmpty => file
-      case _ => throw new RuntimeException(s"Invalid datastream specification provided in ${sdo.getName}")
+      case _ => throw new RuntimeException(s"Invalid datastream specification provided in ${ sdo.getName }")
     }
 
-    log.debug(s"Adding datastream with dsId = $datastreamId")
-    var request = addDatastream(pid, datastreamId).versionable(false).mimeType(dsSpec.mimeType).controlGroup(dsSpec.controlGroup)
+    logger.debug(s"Adding datastream with dsId = $datastreamId")
+    val requestBase = FedoraClient.addDatastream(pid, datastreamId)
+      .versionable(false)
+      .mimeType(dsSpec.mimeType)
+      .controlGroup(dsSpec.controlGroup)
 
-    if (dsSpec.checksumType.nonEmpty && dsSpec.checksum.nonEmpty)
-      request = request.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
+    val requestBase2 = if (dsSpec.checksumType.nonEmpty && dsSpec.checksum.nonEmpty)
+                         requestBase.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
+                       else requestBase
 
-    (
-      if (dsSpec.dsLocation.nonEmpty) request.dsLocation(URLEncoder.encode(dsSpec.dsLocation, "UTF-8"))
-      else if (dsSpec.contentFile.isEmpty) request
-      else (datastreamId, sdo.listFiles.find(_.getName == dsSpec.contentFile)) match {
-        case ("EMD", Some(file)) =>
-          // Note that this would change the ingested file's checksum, but it is only for the EMD datastream, which has no checksum
-          managed(replacePlaceHolder(file, PLACEHOLDER_FOR_DMO_ID, pid)).acquireAndGet(request.content)
-        case (_, Some(file)) => request.content(file)
-        case (_, None) => throw new RuntimeException(s"Couldn't find specified datastream: ${dsSpec.contentFile}")
+    val request =
+      if (dsSpec.dsLocation.nonEmpty)
+        Success(requestBase2.dsLocation(URLEncoder.encode(dsSpec.dsLocation, "UTF-8")))
+      else if (dsSpec.contentFile.isEmpty) {
+        Success(requestBase2)
       }
-    ).execute().getLocation
-  }
+      else
+        sdo.listFiles.find(_.getName == dsSpec.contentFile)
+          .map {
+            case file if datastreamId == "EMD" =>
+              // Note that this would change the ingested file's checksum, but it is only for the EMD datastream, which has no checksum
+              managed(replacePlaceHolder(file, PLACEHOLDER_FOR_DMO_ID, pid))
+                .map(requestBase2.content)
+                .tried
+            case file => Success(requestBase2.content(file))
+          }
+          .getOrElse(Failure(new RuntimeException(s"Couldn't find specified datastream: ${ dsSpec.contentFile }")))
 
-  private def replacePlaceHolder(file: File, placeholder: String, replacement:String): InputStream = {
+    request.flatMap(add => managed(add.execute(fedora)).map(_.getLocation).tried)
+  }.flatten
+
+  private def replacePlaceHolder(file: File, placeholder: String, replacement: String): InputStream = {
     // these files are assumed to be small enough to be read into memory without problems
     val originalContent = FileUtils.readFileToString(file, "UTF-8")
-    require(originalContent.contains(placeholder), s"Missing placeholder '$placeholder' in file: ${file.getAbsolutePath}")
+    require(originalContent.contains(placeholder), s"Missing placeholder '$placeholder' in file: ${ file.getAbsolutePath }")
     new ByteArrayInputStream(originalContent.replace(placeholder, replacement).getBytes("UTF-8"))
   }
 
-  private def getFOXML(sdo: File): Try[File] =
-    sdo.listFiles().find(_.getName == FOXML_FILENAME) match {
-      case Some(f) => Success(f)
-      case None => Failure(new RuntimeException(s"Couldn't find $FOXML_FILENAME in digital object: ${sdo.getName}"))
-    }
+  private def getFOXML(sdo: File): Try[File] = {
+    sdo.listFiles().find(_.getName == FOXML_FILENAME)
+      .map(Success(_))
+      .getOrElse(Failure(new RuntimeException(s"Couldn't find $FOXML_FILENAME in digital object: ${ sdo.getName }")))
+  }
 }

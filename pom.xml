@@ -35,7 +35,7 @@
     <inceptionYear>2015</inceptionYear>
 
     <properties>
-        <main-class>nl.knaw.dans.easy.ingest.EasyIngest</main-class>
+        <main-class>nl.knaw.dans.easy.ingest.Command</main-class>
     </properties>
 
     <scm>

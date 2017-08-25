@@ -19,14 +19,14 @@ import java.io.File
 
 import com.yourmediashelf.fedora.client.FedoraCredentials
 
-object Settings{
-  def apply(conf: Conf): Settings =
-    new Settings(
-      new FedoraCredentials(conf.fedoraUrl(), conf.username(), conf.password()),
-      new File(conf.sdo()),
-      conf.init())
-}
-
 case class Settings(fedoraCredentials: FedoraCredentials,
                     sdo: File,
-                    init: Boolean = false)
+                    init: Boolean = false,
+                    foTemplate: File,
+                    cfgTemplate: File) {
+
+  override def toString: String = {
+    s"ingest.Settings(Fedora(${ fedoraCredentials.getBaseUrl }, ${ fedoraCredentials.getUsername }, " +
+      s"****), sdo = $sdo, init = $init, fo-template = $foTemplate, cfg-template = $cfgTemplate)"
+  }
+}

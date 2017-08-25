@@ -29,7 +29,7 @@ import scala.util.{Success, Failure, Try}
 trait CustomMatchers {
 
   class ContentMatcher(content: String) extends Matcher[File] {
-    def apply(left: File) = {
+    def apply(left: File): MatchResult = {
       def trimLines(s: String): String = s.split("\n").map(_.trim).mkString("\n")
       MatchResult(
         trimLines(readFileToString(left)).contains(trimLines(content)),

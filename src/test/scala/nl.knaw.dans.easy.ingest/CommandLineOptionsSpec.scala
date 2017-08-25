@@ -14,34 +14,27 @@
  * limitations under the License.
  */
 package nl.knaw.dans.easy.ingest
-import java.io.{ByteArrayOutputStream, File}
+
+import java.io.{ ByteArrayOutputStream, File }
+import java.nio.file.Paths
 
 import nl.knaw.dans.easy.ingest.CustomMatchers._
 import org.apache.commons.configuration.PropertiesConfiguration
-import org.apache.commons.io.FileUtils
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{ FlatSpec, Matchers }
 
-import scala.collection.JavaConverters._
+class CommandLineOptionsSpec extends FlatSpec with Matchers {
+  private val resourceDirString: String = Paths.get(getClass.getResource("/").toURI).toAbsolutePath.toString
 
-class ConfSpec extends FlatSpec with Matchers {
+  private val mockedProps = new Configuration("version x.y.z", new PropertiesConfiguration() {
+    setDelimiterParsingDisabled(true)
+    load(Paths.get(resourceDirString + "/debug-config", "application.properties").toFile)
+  })
 
-  /** The defaults as in the README */
-  val props: PropertiesConfiguration = {
-    val fileContent =
-      """default.fcrepo-server=http://localhost:8080/fedora
-        |default.username=fedoraAdmin
-        |default.password=fedoraAdmin
-        | """.stripMargin
-    val tmpFile = new File("target/test/application.properties")
-    FileUtils.write(tmpFile, fileContent)
-    new PropertiesConfiguration(tmpFile)
-  }
+  val mockedArgs = Array.empty[String]
 
-  private val clo = {
-    new Conf(Array[String](), props) {
-      // avoids System.exit() in case of invalid arguments or "--help"
-      override def verify(): Unit = {}
-    }
+  private val clo = new CommandLineOptions(mockedArgs, mockedProps) {
+    // avoids System.exit() in case of invalid arguments or "--help"
+    override def verify(): Unit = {}
   }
 
   private val helpInfo = {
@@ -55,7 +48,7 @@ class ConfSpec extends FlatSpec with Matchers {
   "options in help info" should "be part of README.md" in {
     val lineSeparators = s"(${System.lineSeparator()})+"
     val options = helpInfo.split(s"${lineSeparators}Options:$lineSeparators")(1)
-    options.trim.length shouldNot be (0)
+    options.trim.length should not be 0
     new File("README.md") should containTrimmed(options)
   }
 
@@ -64,16 +57,7 @@ class ConfSpec extends FlatSpec with Matchers {
   }
 
   "description line(s) in help info" should "be part of README.md and pom.xml" in {
-    val description = clo.description
-    new File("README.md") should containTrimmed(description)
-    new File("pom.xml") should containTrimmed(description)
-  }
-
-  "distributed default properties" should "be valid options" in {
-    val optKeys = clo.builder.opts.map(opt => opt.name).toArray
-    val propKeys = new PropertiesConfiguration("src/main/assembly/dist/cfg/application.properties")
-      .getKeys.asScala.withFilter(key => key.startsWith("default.") )
-
-    propKeys.foreach(key => optKeys should contain (key.replace("default.","")) )
+    new File("README.md") should containTrimmed(clo.description)
+    new File("pom.xml") should containTrimmed(clo.description)
   }
 }
