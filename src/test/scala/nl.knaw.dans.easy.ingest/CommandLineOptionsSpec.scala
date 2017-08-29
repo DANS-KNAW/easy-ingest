@@ -25,14 +25,14 @@ import org.scalatest.{ FlatSpec, Matchers }
 class CommandLineOptionsSpec extends FlatSpec with Matchers {
   private val resourceDirString: String = Paths.get(getClass.getResource("/").toURI).toAbsolutePath.toString
 
-  private val mockedProps = new Configuration("version x.y.z", new PropertiesConfiguration() {
+  private val mockedConfiguration = new Configuration("version x.y.z", new PropertiesConfiguration() {
     setDelimiterParsingDisabled(true)
     load(Paths.get(resourceDirString + "/debug-config", "application.properties").toFile)
   })
 
   val mockedArgs = Array.empty[String]
 
-  private val clo = new CommandLineOptions(mockedArgs, mockedProps) {
+  private val clo = new CommandLineOptions(mockedArgs, mockedConfiguration) {
     // avoids System.exit() in case of invalid arguments or "--help"
     override def verify(): Unit = {}
   }
