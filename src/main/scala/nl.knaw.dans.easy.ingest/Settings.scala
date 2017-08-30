@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,14 +19,14 @@ import java.io.File
 
 import com.yourmediashelf.fedora.client.FedoraCredentials
 
-object Settings{
-  def apply(conf: Conf): Settings =
-    new Settings(
-      new FedoraCredentials(conf.fedoraUrl(), conf.username(), conf.password()),
-      new File(conf.sdo()),
-      conf.init())
-}
-
 case class Settings(fedoraCredentials: FedoraCredentials,
                     sdo: File,
-                    init: Boolean = false)
+                    init: Boolean = false,
+                    foTemplate: File,
+                    cfgTemplate: File) {
+
+  override def toString: String = {
+    s"ingest.Settings(Fedora(${ fedoraCredentials.getBaseUrl }, ${ fedoraCredentials.getUsername }, " +
+      s"****), sdo = $sdo, init = $init, fo-template = $foTemplate, cfg-template = $cfgTemplate)"
+  }
+}

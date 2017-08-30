@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+    Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
 
-            http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,26 +16,33 @@
     limitations under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
-       <groupId>nl.knaw.dans.shared</groupId>
-       <artifactId>dans-scala-prototype</artifactId>
-       <version>1.35</version>
+        <groupId>nl.knaw.dans.shared</groupId>
+        <artifactId>dans-scala-prototype</artifactId>
+        <version>1.53</version>
     </parent>
+
     <groupId>nl.knaw.dans.easy</groupId>
     <artifactId>easy-ingest</artifactId>
+    <version>1.5.0-SNAPSHOT</version>
+
     <name>EASY Ingest</name>
     <description>Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository.</description>
-    <version>1.x-SNAPSHOT</version>
-    <inceptionYear>2015-2016</inceptionYear>
+    <inceptionYear>2015</inceptionYear>
+
     <properties>
-        <main-class>nl.knaw.dans.easy.ingest.EasyIngest</main-class>
+        <main-class>nl.knaw.dans.easy.ingest.Command</main-class>
     </properties>
+
     <scm>
         <developerConnection>scm:git:https://github.com/DANS-KNAW/${project.artifactId}</developerConnection>
         <tag>HEAD</tag>
     </scm>
+
     <dependencies>
         <dependency>
             <groupId>commons-configuration</groupId>
@@ -80,8 +87,10 @@
         <dependency>
             <groupId>nl.knaw.dans.lib</groupId>
             <artifactId>dans-scala-lib</artifactId>
+            <version>1.2</version>
         </dependency>
     </dependencies>
+
     <repositories>
         <repository>
             <id>DANS</id>
@@ -91,6 +100,7 @@
             <url>http://maven.dans.knaw.nl/</url>
         </repository>
     </repositories>
+
     <pluginRepositories>
         <pluginRepository>
             <id>DANS</id>
@@ -100,6 +110,7 @@
             <url>http://maven.dans.knaw.nl/</url>
         </pluginRepository>
     </pluginRepositories>
+
     <build>
         <plugins>
             <plugin>
@@ -129,4 +140,32 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>rpm</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <file>
+                    <exists>/usr/local/bin/rpm</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>rpm-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-rpm</id>
+                                <goals>
+                                    <goal>attached-rpm</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
