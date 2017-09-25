@@ -188,6 +188,7 @@ object EasyIngest extends DebugEnhancedLogging {
     logger.debug(s"Adding datastream with dsId = $datastreamId")
     val requestBase = FedoraClient.addDatastream(pid, datastreamId)
       .versionable(false)
+      .dsLabel(dsSpec.label)
       .mimeType(dsSpec.mimeType)
       .controlGroup(dsSpec.controlGroup)
 

@@ -34,6 +34,7 @@ package object ingest {
   case class DatastreamSpec(contentFile: String = "",
                             dsLocation: String = "",
                             dsID: String = "",
+                            label: String = "",
                             mimeType: String = "application/octet-stream",
                             controlGroup: String = "M",
                             checksumType: String = "",
