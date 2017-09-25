@@ -191,9 +191,12 @@ object EasyIngest extends DebugEnhancedLogging {
       .mimeType(dsSpec.mimeType)
       .controlGroup(dsSpec.controlGroup)
 
-    val requestBase2 = if (dsSpec.checksumType.nonEmpty && dsSpec.checksum.nonEmpty)
-                         requestBase.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
+    val requestBase1 = if (dsSpec.label.nonEmpty) requestBase.dsLabel(dsSpec.label)
                        else requestBase
+
+    val requestBase2 = if (dsSpec.checksumType.nonEmpty && dsSpec.checksum.nonEmpty)
+                         requestBase1.checksumType(dsSpec.checksumType).checksum(dsSpec.checksum)
+                       else requestBase1
 
     val request =
       if (dsSpec.dsLocation.nonEmpty)
