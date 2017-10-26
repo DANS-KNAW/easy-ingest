@@ -167,7 +167,7 @@ object EasyIngest extends DebugEnhancedLogging {
     val subjectPid: Pid = pidDictionary(subjectName)
     val objectPid = (if (relation.`object` != "") relation.`object`
                      else pidToUri(pidDictionary(relation.objectSDO)))
-      .replace("$sdo-id", subjectPid)
+      .replace(PLACEHOLDER_FOR_DMO_ID, subjectPid)
     val request = FedoraClient.addRelationship(subjectPid)
       .predicate(relation.predicate)
       .`object`(objectPid, relation.isLiteral)
