@@ -163,10 +163,11 @@ object EasyIngest extends DebugEnhancedLogging {
       }
   }
 
-  private def addRelation(subjectName: String, pidDictionary: PidDictionary)(relation: Relation)(implicit fedora: FedoraClient): Try[(Pid, String, Pid)] = {
+  private def addRelation(subjectName: String, pidDictionary: PidDictionary)(relation: Relation)(implicit fedora: FedoraClient): Try[(Pid, String, String)] = {
     val subjectPid: Pid = pidDictionary(subjectName)
-    val objectPid = if (relation.`object` != "") relation.`object`
-                    else pidToUri(pidDictionary(relation.objectSDO))
+    val objectPid = (if (relation.`object` != "") relation.`object`
+                     else pidToUri(pidDictionary(relation.objectSDO)))
+      .replace("$sdo-id", subjectPid)
     val request = FedoraClient.addRelationship(subjectPid)
       .predicate(relation.predicate)
       .`object`(objectPid, relation.isLiteral)
