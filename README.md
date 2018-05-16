@@ -119,8 +119,8 @@ ARGUMENTS
 ---------
 
      -i, --init      Initialize template SDO instead of ingesting
-         --help      Show help message
-         --version   Show version of this program
+     -h, --help      Show help message
+     -v, --version   Show version of this program
 
     trailing arguments:
      <staged-digital-object-(set)> (required)   Either a single Staged Digital Object or a set of SDO's
