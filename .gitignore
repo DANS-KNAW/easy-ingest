@@ -1,4 +1,5 @@
-target/
+/target/
+/*/target/
 /pom.xml.tag
 /pom.xml.releaseBackup
 /pom.xml.versionsBackup
@@ -15,9 +16,9 @@ target/
 /.idea/
 .DS_Store
 /apphome.sh
-/home/
-/data/
-/data-*/
+/command/home/
+/command/data/
+/command/data-*/
 /.vagrant/
 /.yum-repo
 /.dans.knaw.nl-yum-repo

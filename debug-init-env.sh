@@ -15,11 +15,11 @@
 # limitations under the License.
 #
 
-DATADIR=data
+DATADIR=command/data
 
 echo "Copying test data to $DATADIR..."
-cp -r src/test/resources/misc $DATADIR/misc
-cp -r src/test/resources/staged-test1 $DATADIR/staged-test1
+cp -r command/src/test/resources/misc $DATADIR/misc
+cp -r command/src/test/resources/staged-test1 $DATADIR/staged-test1
 
 touch $DATADIR/easy-bag-index.log
 echo "OK"
