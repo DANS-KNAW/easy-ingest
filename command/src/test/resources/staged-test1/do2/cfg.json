@@ -1,0 +1,25 @@
+{
+  "namespace" : "easy-file",
+  "label" : "TEST FILE",
+  "ownerId" : "alan",
+  "datastreams" : [
+    {
+      "contentFile" : "quicksort.hs",
+      "mimeType" : "text/plain"
+    }
+  ],
+  "relations" : [
+    {
+      "predicate" : "http://dans.knaw.nl/ontologies/relations#isMemberOf",
+      "objectSDO" : "do1"
+    },
+    {
+      "predicate" : "http://dans.knaw.nl/ontologies/relations#isSubordinateTo",
+      "objectSDO" : "do1"
+    },
+    {
+      "predicate" : "info:fedora/fedora-system:def/model#hasModel",
+      "object" : "info:fedora/dans-container-item-v1"
+    }
+  ]
+}
