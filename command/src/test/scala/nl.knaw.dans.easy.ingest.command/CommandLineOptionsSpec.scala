@@ -58,6 +58,6 @@ class CommandLineOptionsSpec extends FlatSpec with Matchers {
 
   "description line(s) in help info" should "be part of README.md and pom.xml" in {
     new File("../README.md") should containTrimmed(clo.description)
-    new File("pom.xml") should containTrimmed(clo.description)
+    new File("../pom.xml") should containTrimmed(clo.description)
   }
 }
