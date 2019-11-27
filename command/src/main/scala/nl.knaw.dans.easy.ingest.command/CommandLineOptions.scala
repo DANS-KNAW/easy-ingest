@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.ingest
+package nl.knaw.dans.easy.ingest.command
 
 import org.rogach.scallop.{ ScallopConf, ScallopOption }
 
