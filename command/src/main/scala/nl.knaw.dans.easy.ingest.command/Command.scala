@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.ingest
+package nl.knaw.dans.easy.ingest.command
 
 import java.io.File
 import java.nio.file.Paths
 
 import com.yourmediashelf.fedora.client.FedoraCredentials
 import nl.knaw.dans.lib.error._
+
+import nl.knaw.dans.easy.ingest.{Settings, EasyIngest}
 
 object Command extends App {
 
