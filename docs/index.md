@@ -9,6 +9,7 @@ SYNOPSIS
 --------
 
     easy-ingest [-i] [<staged-digital-object> | <staged-digital-object-set>]
+    easy-ingest [-p <extraPids>] [<staged-digital-object> | <staged-digital-object-set>]
 
 
 DESCRIPTION
@@ -118,9 +119,11 @@ A few extra properties and shortcuts are added by ``easy-ingest``:
 ARGUMENTS
 ---------
 
-     -i, --init      Initialize template SDO instead of ingesting
-     -h, --help      Show help message
-     -v, --version   Show version of this program
+     -p, --extraPids  <arg>   Properties file containing extra key-value pairs for the PidDictionary that is
+                              being put together while running this application.
+     -i, --init               Initialize template SDO instead of ingesting
+     -h, --help               Show help message
+     -v, --version            Show version of this program
 
     trailing arguments:
      <staged-digital-object-(set)> (required)   Either a single Staged Digital Object or a set of SDO's
