@@ -21,7 +21,7 @@
 
     <groupId>nl.knaw.dans.easy</groupId>
     <artifactId>easy-ingest-build</artifactId>
-    <version>2.0.1-SNAPSHOT</version>
+    <version>2.1.0</version>
 
     <name>EASY Ingest Master Build</name>
     <description>Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository.</description>
@@ -35,7 +35,7 @@
 
     <scm>
         <developerConnection>scm:git:https://github.com/DANS-KNAW/easy-ingest</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v2.1.0</tag>
     </scm>
     
     <build>
