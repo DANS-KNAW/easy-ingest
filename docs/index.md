@@ -116,6 +116,56 @@ A few extra properties and shortcuts are added by ``easy-ingest``:
     - "objectSDO" is the name of an SDO in the same SDO-set. ``easy-ingest`` will fill in the resulting Fedora PID here.
 
 
+### Extra PIDs
+
+When an extra file needs to be ingested and linked to an existing dataset, the `--extraPids` option can be used. For example:
+
+Given a dataset `easy-dataset:1` that is already ingested and a staged file object `MY_FILE` with a `cfg.json` containing a
+`relation` with `objectSDO` referring to the dataset.
+
+```json
+{
+  "namespace":"easy-file",
+  "datastreams":[{
+    "contentFile":"EASY_FILE",
+    "dsID":"EASY_FILE",
+    "controlGroup":"M",
+    "mimeType":"text/plain",
+    "checksumType":"SHA-1",
+    "checksum":"4f5ea58e1c7e617f2190f7d9cf33637bc14aae02"
+  },{
+    "contentFile":"EASY_FILE_METADATA",
+    "dsID":"EASY_FILE_METADATA",
+    "controlGroup":"X",
+    "mimeType":"text/xml"
+  }],
+  "relations":[{
+    "predicate":"http://dans.knaw.nl/ontologies/relations#isMemberOf",
+    "objectSDO":"DATASET_SDO~~RESERVED"
+  },{
+    "predicate":"http://dans.knaw.nl/ontologies/relations#isSubordinateTo",
+    "objectSDO":"DATASET_SDO~~RESERVED"
+  },{
+    "predicate":"info:fedora/fedora-system:def/model#hasModel",
+    "object":"info:fedora/easy-model:EDM1FILE"
+  },{
+    "predicate":"info:fedora/fedora-system:def/model#hasModel",
+    "object":"info:fedora/dans-container-item-v1"
+  }]
+}
+```
+
+The goal is for `MY_FILE` to be ingested into Fedora, and linked to `easy-dataset:1`.
+Create a `extra-pids.properties` file with content:
+
+```properties
+DATASET_SDO~~RESERVED = easy-dataset:1
+```
+
+Now run `easy-ingest --extraPids extra-pids.properties MY_FILE` and `MY_FILE` will be ingested into Fedora and the
+`DATASET_SDO~~RESERVED` key will be replaced by `easy-dataset:1` in the relation(s).
+
+
 ARGUMENTS
 ---------
 
