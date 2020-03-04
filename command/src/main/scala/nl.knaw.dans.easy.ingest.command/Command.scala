@@ -19,9 +19,11 @@ import java.io.File
 import java.nio.file.Paths
 
 import com.yourmediashelf.fedora.client.FedoraCredentials
+import nl.knaw.dans.easy.ingest.{ EasyIngest, ObjectName, Pid, PidDictionary, Settings }
 import nl.knaw.dans.lib.error._
+import org.apache.commons.configuration.PropertiesConfiguration
 
-import nl.knaw.dans.easy.ingest.{Settings, EasyIngest}
+import scala.collection.JavaConverters._
 
 object Command extends App {
 
@@ -35,8 +37,17 @@ object Command extends App {
     sdo = new File(clo.sdo()),
     init = clo.init(),
     foTemplate = new File(configuration.properties.getString("default.fo-template")),
-    cfgTemplate = new File(configuration.properties.getString("default.cfg-template"))
+    cfgTemplate = new File(configuration.properties.getString("default.cfg-template")),
+    extraPids = clo.extraPids.toOption.fold(Map.empty[ObjectName, Pid])(readExtraPids),
   )
+
+  private def readExtraPids(file: File): PidDictionary = {
+    val props = new PropertiesConfiguration() {
+      setDelimiterParsingDisabled(true)
+      load(file)
+    }
+    props.getKeys.asScala.map(key => key -> props.getString(key)).toMap
+  }
 
   EasyIngest.run
     .doIfSuccess(dict => println(s"OK: Completed succesfully. Ingested: ${ dict.values.mkString(", ") }"))
