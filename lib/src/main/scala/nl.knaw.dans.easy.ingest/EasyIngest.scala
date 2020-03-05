@@ -46,7 +46,7 @@ object EasyIngest extends DebugEnhancedLogging {
   private def ingest(sdo: File)(implicit settings: Settings): Try[PidDictionary] = {
     val sdos = if (isSdo(sdo)) List[File](sdo)
                else sdo.listFiles().filter(_.isDirectory).toList
-    ingestStagedDigitalObjects(sdos)(new FedoraClient(settings.fedoraCredentials))
+    ingestStagedDigitalObjects(sdos)(new FedoraClient(settings.fedoraCredentials), settings.extraPids)
   }
 
   private def initSdo(dir: File)(implicit settings: Settings): Try[Unit] = {
@@ -65,7 +65,7 @@ object EasyIngest extends DebugEnhancedLogging {
 
   private def isSdo(f: File): Boolean = f.isDirectory && f.list.contains(FOXML_FILENAME)
 
-  private def ingestStagedDigitalObjects(sdos: List[File])(implicit fedora: FedoraClient): Try[PidDictionary] = {
+  private def ingestStagedDigitalObjects(sdos: List[File])(implicit fedora: FedoraClient, extraPids: PidDictionary): Try[PidDictionary] = {
     for {
       configDictionary <- buildConfigDictionary(sdos)
       pidDictionary <- ingestDigitalObjects(configDictionary, sdos)
@@ -82,7 +82,7 @@ object EasyIngest extends DebugEnhancedLogging {
     sdos.map(d => readDOConfig(d).map(cfg => (d.getName, cfg))).collectResults.map(_.toMap)
   }
 
-  private def ingestDigitalObjects(configDictionary: ConfigDictionary, sdos: List[File])(implicit fedora: FedoraClient): Try[PidDictionary] = {
+  private def ingestDigitalObjects(configDictionary: ConfigDictionary, sdos: List[File])(implicit fedora: FedoraClient, extraPids: PidDictionary): Try[PidDictionary] = {
     // the full message is repeated in the cause
     // if stripping fails due to library changes we just have a less crisp top level message
     def stripMessage(e: Throwable): String = e.getMessage.replaceAll(".*Checksum Mismatch:", "Checksum Mismatch:")
@@ -103,7 +103,7 @@ object EasyIngest extends DebugEnhancedLogging {
     }
 
     logger.info(">>> PHASE 1: INGEST DIGITAL OBJECTS")
-    failFastLoop(sdos)
+    failFastLoop(sdos).map(_ ++ extraPids)
   }
 
   private def partialFailure(pidDictionary: PidDictionary, s: String, e: Throwable): Failure[Nothing] =

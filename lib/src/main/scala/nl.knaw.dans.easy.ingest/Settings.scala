@@ -23,10 +23,12 @@ case class Settings(fedoraCredentials: FedoraCredentials,
                     sdo: File,
                     init: Boolean = false,
                     foTemplate: File,
-                    cfgTemplate: File) {
+                    cfgTemplate: File,
+                    extraPids: PidDictionary = Map.empty,
+                   ) {
 
   override def toString: String = {
     s"ingest.Settings(Fedora(${ fedoraCredentials.getBaseUrl }, ${ fedoraCredentials.getUsername }, " +
-      s"****), sdo = $sdo, init = $init, fo-template = $foTemplate, cfg-template = $cfgTemplate)"
+      s"****), sdo = $sdo, init = $init, fo-template = $foTemplate, cfg-template = $cfgTemplate, extraPids = $extraPids)"
   }
 }

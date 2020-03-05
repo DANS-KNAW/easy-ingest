@@ -15,6 +15,8 @@
  */
 package nl.knaw.dans.easy.ingest.command
 
+import java.io.File
+
 import org.rogach.scallop.{ ScallopConf, ScallopOption }
 
 class CommandLineOptions(args: Seq[String], configuration: Configuration) extends ScallopConf(args) {
@@ -25,7 +27,11 @@ class CommandLineOptions(args: Seq[String], configuration: Configuration) extend
   printedName = "easy-ingest"
   version(s"$printedName ${ configuration.version }")
   val description = "Ingest Staged Digital Objects (SDO's) into a Fedora Commons 3.x repository."
-  val synopsis = s"$printedName [-i] [<staged-digital-object> | <staged-digital-object-set>]"
+  val synopsis =
+    s"""
+       |  $printedName [-i] [<staged-digital-object> | <staged-digital-object-set>]
+       |  $printedName [-p <extraPids>] [<staged-digital-object> | <staged-digital-object-set>]
+       |""".stripMargin
   banner(
     s"""
        |$description
@@ -41,11 +47,22 @@ class CommandLineOptions(args: Seq[String], configuration: Configuration) extend
   val init: ScallopOption[Boolean] = opt[Boolean](name = "init",
     descr = "Initialize template SDO instead of ingesting",
     default = Some(false),
-    required = false)
+    required = false,
+    short = 'i',
+  )
+  val extraPids: ScallopOption[File] = opt[File](name = "extraPids",
+    descr = "Properties file containing extra key-value pairs for the PidDictionary that is being put together while running this application.",
+    required = false,
+    short = 'p',
+  )
   val sdo: ScallopOption[String] = trailArg[String](
     name = "<staged-digital-object-(set)>",
     descr = "Either a single Staged Digital Object or a set of SDO's",
-    required = true)
+    required = true,
+  )
+
+  validateFileExists(extraPids)
+  validateFileIsFile(extraPids)
 
   verify()
 } 
