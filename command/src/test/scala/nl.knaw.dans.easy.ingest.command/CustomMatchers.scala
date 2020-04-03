@@ -15,14 +15,11 @@
  */
 package nl.knaw.dans.easy.ingest.command
 
-import java.io.{FileInputStream, File}
+import java.io.File
+import java.nio.charset.StandardCharsets
 
 import org.apache.commons.io.FileUtils._
-import org.apache.commons.io.IOUtils
-import org.scalatest.matchers.{MatchResult, Matcher}
-import org.scalatest.words.ResultOfATypeInvocation
-
-import scala.util.{Success, Failure, Try}
+import org.scalatest.matchers.{ MatchResult, Matcher }
 
 
 /** See also <a href="http://www.scalatest.org/user_guide/using_matchers#usingCustomMatchers">CustomMatchers</a> */
@@ -32,7 +29,7 @@ trait CustomMatchers {
     def apply(left: File): MatchResult = {
       def trimLines(s: String): String = s.split("\n").map(_.trim).mkString("\n")
       MatchResult(
-        trimLines(readFileToString(left)).contains(trimLines(content)),
+        trimLines(readFileToString(left, StandardCharsets.UTF_8)).contains(trimLines(content)),
         s"$left did not contain: $content" ,
         s"$left contains $content"
       )
