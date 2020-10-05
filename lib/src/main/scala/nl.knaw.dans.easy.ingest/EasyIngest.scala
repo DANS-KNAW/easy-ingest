@@ -166,7 +166,14 @@ object EasyIngest extends DebugEnhancedLogging {
   private def addRelation(subjectName: String, pidDictionary: PidDictionary)(relation: Relation)(implicit fedora: FedoraClient): Try[(Pid, String, String)] = {
     val subjectPid: Pid = pidDictionary(subjectName)
     val objectPid = (if (relation.`object` != "") relation.`object`
-                     else pidToUri(pidDictionary(relation.objectSDO)))
+                     else {
+                       if (pidDictionary.contains(relation.objectSDO))
+                         pidToUri(pidDictionary(relation.objectSDO))
+                       else {
+                         // This addition in order to ingest objects created by easy-stage-file-item
+                         pidToUri(relation.objectSDO.replace("easy-dataset_", "easy-dataset:"))
+                       }
+                     })
       .replace(PLACEHOLDER_FOR_DMO_ID, subjectPid)
     val request = FedoraClient.addRelationship(subjectPid)
       .predicate(relation.predicate)
