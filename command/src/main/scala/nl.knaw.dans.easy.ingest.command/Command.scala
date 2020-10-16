@@ -50,6 +50,6 @@ object Command extends App {
   }
 
   EasyIngest.run
-    .doIfSuccess(dict => println(s"OK: Completed succesfully. Ingested: ${ dict.values.mkString(", ") }"))
+    .doIfSuccess(dict => println(s"OK: Completed succesfully. Ingested for ${settings.sdo.getName.replace("easy-dataset_", "easy-dataset:")}: ${ dict.values.mkString(", ") }"))
     .doIfFailure { case e => println(s"FAILED: ${ e.getMessage }") }
 }
