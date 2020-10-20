@@ -35,7 +35,7 @@ object EasyIngest extends DebugEnhancedLogging {
     val result = if (s.init) initOnly _ else ingest _
 
     result(s.sdo)
-      .doIfSuccess(dict => logger.info(s"ingested: ${ dict.values.mkString(", ") }"))
+      .doIfSuccess(dict => logger.info(s"Ingested for ${s.sdo.getName.replace("easy-dataset_", "easy-dataset:")}: ${ dict.values.mkString(", ") }"))
       .doIfFailure { case e => logger.error(s"ingest failed: ${ e.getMessage }", e) }
   }
 
