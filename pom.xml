@@ -35,7 +35,7 @@
     </properties>
 
     <scm>
-        <developerConnection>scm:git:https://github.com/DANS-KNAW/easy-ingest</developerConnection>
+        <developerConnection>scm:git:ssh://github.com/DANS-KNAW/easy-ingest</developerConnection>
         <tag>HEAD</tag>
     </scm>
     
